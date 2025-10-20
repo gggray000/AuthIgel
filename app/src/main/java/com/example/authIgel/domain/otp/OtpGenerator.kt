@@ -1,4 +1,4 @@
-package com.example.igelAuth.domain.otp
+package com.example.authIgel.domain.otp
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec

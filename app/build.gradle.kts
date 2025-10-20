@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.igelAuth"
+    namespace = "com.example.authIgel"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.igelAuth"
+        applicationId = "com.example.authIgel"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

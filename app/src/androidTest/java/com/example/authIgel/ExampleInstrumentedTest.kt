@@ -1,4 +1,4 @@
-package com.example.igelAuth
+package com.example.authIgel
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

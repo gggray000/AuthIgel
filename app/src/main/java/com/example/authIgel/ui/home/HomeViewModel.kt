@@ -1,4 +1,4 @@
-package com.example.igelAuth.ui.home
+package com.example.authIgel.ui.home
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

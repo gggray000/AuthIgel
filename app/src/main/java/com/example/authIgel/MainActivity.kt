@@ -1,4 +1,4 @@
-package com.example.igelAuth
+package com.example.authIgel
 
 import android.os.Bundle
 import android.view.Menu
@@ -11,7 +11,7 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.appcompat.app.AppCompatActivity
-import com.example.igelAuth.databinding.ActivityMainBinding
+import com.example.authIgel.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 

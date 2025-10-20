@@ -1,6 +1,6 @@
-package com.example.igelAuth
+package com.example.authIgel
 
-import com.example.igelAuth.domain.otp.OtpGenerator
+import com.example.authIgel.domain.otp.OtpGenerator
 import org.junit.Test
 import kotlin.test.assertEquals
 
