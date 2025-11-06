@@ -1,5 +1,6 @@
 package com.ray.authigel.ui.homescreen
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,7 @@ import com.ray.authigel.ui.theme.HedgehogBrown
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import kotlinx.coroutines.delay
 
 // --- Model ---
 data class TokenEntry(
@@ -185,6 +187,7 @@ private fun HomePreview() {
     }
 }
 
+@SuppressLint("SuspiciousIndentation")
 @Composable
 fun TotpCountdown(
     periodSec: Int,
@@ -207,7 +210,7 @@ fun TotpCountdown(
             }
 
             lastCycle = currentCycle
-            kotlinx.coroutines.delay(100)
+            delay(100)
         }
     }
 
