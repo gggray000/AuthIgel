@@ -28,34 +28,25 @@ import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.delay
 
 // --- Model ---
-data class TokenEntry(
+data class CodeRecord(
     val id: String = UUID.randomUUID().toString(),
-    val label: String,
-    val secret: ByteArray,
-    val code: String
+    val issuer: String,
+    val holder: String,
+    val secret: String,
+    val rawUri: String? = null,
 )
 
 // --- ViewModel to hold the list of cards ---
 class HomeViewModel : ViewModel() {
-    private val _tokens = mutableStateListOf<TokenEntry>()
-    val tokens: List<TokenEntry> get() = _tokens
+    private val _records = mutableStateListOf<CodeRecord>()
+    val records: List<CodeRecord> get() = _records
 
-    fun addToken(label: String, secret: ByteArray) {
-        val code = OtpGenerator.generateTOTP(secret)
-        _tokens.add(TokenEntry(label = label, secret = secret, code = code))
-    }
-
-    fun refreshToken(id: String) {
-        val idx = _tokens.indexOfFirst { it.id == id }
-        if (idx >= 0) {
-            val t = _tokens[idx]
-            val newCode = OtpGenerator.generateTOTP(t.secret)
-            _tokens[idx] = t.copy(code = newCode)
-        }
+    fun addToken(issuer: String, holder: String, secret: String) {
+        _records.add(CodeRecord(issuer = issuer,  holder = holder, secret = secret))
     }
 
     fun deleteToken(id: String) {
-        _tokens.removeAll { it.id == id }
+        _records.removeAll { it.id == id }
     }
 }
 
@@ -66,7 +57,7 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // To be replaced later
-    val demoSecret = remember { "12345678901234567890".toByteArray(Charsets.US_ASCII) }
+    val demoSecret = remember { "12345678901234567890" }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("AuthIgel") }) },
@@ -76,8 +67,8 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
                 containerColor = HedgehogBrown,
                 contentColor = Color.White,
                 onClick = {
-                    vm.addToken(label = "Demo Account", secret = demoSecret)
-                    scope.launch { snackbarHostState.showSnackbar("Card added!") }
+                    vm.addToken(issuer = "Demo Service", holder = "Dev", secret = demoSecret)
+                    scope.launch { snackbarHostState.showSnackbar("Card Added!") }
                 }
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add")
@@ -85,7 +76,7 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
         }
     ) { inner ->
         Box(Modifier.padding(inner).fillMaxSize()) {
-            if (vm.tokens.isEmpty()) {
+            if (vm.records.isEmpty()) {
                 EmptyState(Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(
@@ -93,16 +84,12 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(vm.tokens, key = { it.id }) { token ->
-                        TokenCard(
-                            token = token,
-                            onRefresh = {
-                                vm.refreshToken(token.id)
-                                scope.launch { snackbarHostState.showSnackbar("Code refreshed") }
-                            },
+                    items(vm.records, key = { it.id }) { record ->
+                        CodeRecordCard(
+                            record = record,
                             onDelete = {
-                                vm.deleteToken(token.id)
-                                scope.launch { snackbarHostState.showSnackbar("Card removed") }
+                                vm.deleteToken(record.id)
+                                scope.launch { snackbarHostState.showSnackbar("${record.issuer} Card Removed") }
                             }
                         )
                     }
@@ -125,12 +112,15 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TokenCard(
-    token: TokenEntry,
-    onRefresh: () -> Unit,
+private fun CodeRecordCard(
+    record: CodeRecord,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var code by remember {
+    mutableStateOf(OtpGenerator.generateTOTP(record.secret.toByteArray(Charsets.US_ASCII)))
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -146,9 +136,10 @@ private fun TokenCard(
                     .weight(1f)
                     .padding(end = 8.dp)
             ) {
-                Text(token.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(record.issuer, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(record.holder, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
                 Spacer(Modifier.height(4.dp))
-                Text(formatOtp(token.code), style = MaterialTheme.typography.headlineLarge)
+                Text(formatOtp(code), style = MaterialTheme.typography.headlineLarge)
             }
 
             IconButton(onClick = onDelete) {
@@ -163,7 +154,7 @@ private fun TokenCard(
         ) {
             TotpCountdown(
                 periodSec = 15,
-                onCycleComplete = onRefresh
+                onCycleComplete = { code = OtpGenerator.generateTOTP(record.secret.toByteArray(Charsets.US_ASCII)) }
             )
         }
     }
@@ -174,19 +165,6 @@ private fun formatOtp(code: String): String {
     return if (code.length == 6) code.chunked(3).joinToString(" ") else code
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun HomePreview() {
-    AuthIgelTheme {
-        val previewToken = TokenEntry(
-            label = "GitHub",
-            secret = ByteArray(0),
-            code = "123456"
-        )
-        Surface { TokenCard(previewToken, onRefresh = {}, onDelete = {}) }
-    }
-}
-
 @SuppressLint("SuspiciousIndentation")
 @Composable
 fun TotpCountdown(
@@ -194,7 +172,7 @@ fun TotpCountdown(
     modifier: Modifier = Modifier,
     onCycleComplete: () -> Unit = {}
 ) {
-    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var lastCycle by remember { mutableIntStateOf(-1) }
 
     LaunchedEffect(Unit) {
@@ -255,5 +233,21 @@ private fun CircularCountdown(
             text = "${remaining}s",
             style = MaterialTheme.typography.labelSmall
         )
+    }
+}
+
+
+@Preview(showBackground = true)
+@Composable
+private fun HomePreview() {
+    AuthIgelTheme {
+        val previewToken = CodeRecord(
+            issuer = "Demo Service",
+            holder = "Dev",
+            secret = "12345678901234567890",
+        )
+        Surface { CodeRecordCard(
+            previewToken, onDelete = {}
+        ) }
     }
 }
