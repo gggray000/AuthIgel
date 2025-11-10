@@ -2,8 +2,8 @@ package com.ray.authigel.ui.homescreen
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ray.authigel.domain.OtpGenerator
 import java.util.UUID
@@ -25,35 +24,20 @@ import com.ray.authigel.ui.theme.HedgehogBrown
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.*
+import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ray.authigel.data.CodeRecordVaultViewModel
+import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
-
-// --- Model ---
-data class CodeRecord(
-    val id: String = UUID.randomUUID().toString(),
-    val issuer: String,
-    val holder: String,
-    val secret: String,
-    val rawUri: String? = null,
-)
-
-// --- ViewModel to hold the list of cards ---
-class HomeViewModel : ViewModel() {
-    private val _records = mutableStateListOf<CodeRecord>()
-    val records: List<CodeRecord> get() = _records
-
-    fun addToken(issuer: String, holder: String, secret: String) {
-        _records.add(CodeRecord(issuer = issuer,  holder = holder, secret = secret))
-    }
-
-    fun deleteToken(id: String) {
-        _records.removeAll { it.id == id }
-    }
-}
 
 // --- Screen ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(vm: HomeViewModel = viewModel()) {
+fun HomeScreen() {
+    val vm: CodeRecordVaultViewModel = viewModel()
+    val records by vm.records.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     // To be replaced later
@@ -67,7 +51,14 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
                 containerColor = HedgehogBrown,
                 contentColor = Color.White,
                 onClick = {
-                    vm.addToken(issuer = "Demo Service", holder = "Dev", secret = demoSecret)
+                    val newRecord = CodeRecord.newBuilder()
+                        .setId(System.currentTimeMillis().toString())
+                        .setIssuer("GitHub")
+                        .setHolder("you@example.com")
+                        .setSecret("JBSWY3DPEHPK3PXP")
+                        .setRawUrl("otpauth://totp/…")
+                        .build()
+                    vm.add(newRecord)
                     scope.launch { snackbarHostState.showSnackbar("Card Added!") }
                 }
             ) {
@@ -76,7 +67,7 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
         }
     ) { inner ->
         Box(Modifier.padding(inner).fillMaxSize()) {
-            if (vm.records.isEmpty()) {
+            if (records.isEmpty()) {
                 EmptyState(Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(
@@ -84,11 +75,11 @@ fun HomeScreen(vm: HomeViewModel = viewModel()) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(vm.records, key = { it.id }) { record ->
+                    items(records, key = { it.id }) { record ->
                         CodeRecordCard(
                             record = record,
                             onDelete = {
-                                vm.deleteToken(record.id)
+                                vm.delete(record.id)
                                 scope.launch { snackbarHostState.showSnackbar("${record.issuer} Card Removed") }
                             }
                         )
@@ -241,13 +232,15 @@ private fun CircularCountdown(
 @Composable
 private fun HomePreview() {
     AuthIgelTheme {
-        val previewToken = CodeRecord(
-            issuer = "Demo Service",
-            holder = "Dev",
-            secret = "12345678901234567890",
-        )
+        val previewCode = CodeRecord.newBuilder()
+        .setId(System.currentTimeMillis().toString())
+        .setIssuer("GitHub")
+        .setHolder("you@example.com")
+        .setSecret("JBSWY3DPEHPK3PXP")
+        .setRawUrl("otpauth://totp/…")
+        .build()
         Surface { CodeRecordCard(
-            previewToken, onDelete = {}
+            previewCode, onDelete = {}
         ) }
     }
 }

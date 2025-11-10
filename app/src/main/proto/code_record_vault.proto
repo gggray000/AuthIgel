@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_package = "com.ray.authigel.vault";
+option java_multiple_files = true;
+
+message CodeRecord {
+  string id = 1;
+  string issuer = 2;
+  string holder = 3;
+  string secret = 4;
+  string rawUrl = 5;
+
+}
+
+message CodeRecordVault {
+  repeated CodeRecord tokens = 1;
+}
