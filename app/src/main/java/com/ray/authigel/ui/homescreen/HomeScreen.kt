@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ray.authigel.domain.OtpGenerator
+import com.ray.authigel.util.OtpGenerator
 import java.util.UUID
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,8 +40,7 @@ fun HomeScreen() {
     val records by vm.records.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    // To be replaced later
-    val demoSecret = remember { "12345678901234567890" }
+    var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("AuthIgel") }) },
@@ -50,17 +49,7 @@ fun HomeScreen() {
             FloatingActionButton(
                 containerColor = HedgehogBrown,
                 contentColor = Color.White,
-                onClick = {
-                    val newRecord = CodeRecord.newBuilder()
-                        .setId(System.currentTimeMillis().toString())
-                        .setIssuer("GitHub")
-                        .setHolder("you@example.com")
-                        .setSecret("JBSWY3DPEHPK3PXP")
-                        .setRawUrl("otpauth://totp/…")
-                        .build()
-                    vm.add(newRecord)
-                    scope.launch { snackbarHostState.showSnackbar("Card Added!") }
-                }
+                onClick = { showAddDialog = true }
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add")
             }
@@ -80,13 +69,30 @@ fun HomeScreen() {
                             record = record,
                             onDelete = {
                                 vm.delete(record.id)
-                                scope.launch { snackbarHostState.showSnackbar("${record.issuer} Card Removed") }
+                                scope.launch { snackbarHostState.showSnackbar("${record.issuer} Record Removed") }
                             }
                         )
                     }
                 }
             }
         }
+    }
+    if (showAddDialog) {
+        AddRecordDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = { issuer, holder, secret, url ->
+                val record = com.ray.authigel.vault.CodeRecord.newBuilder()
+                    .setId(System.currentTimeMillis().toString())
+                    .setIssuer(issuer)
+                    .setHolder(holder)
+                    .setSecret(secret)         // Base32 secret (unchanged)
+                    .setRawUrl(url ?: "")      // optional otpauth URL
+                    .build()
+                vm.add(record)
+                showAddDialog = false
+                scope.launch { snackbarHostState.showSnackbar("Record added") }
+            }
+        )
     }
 }
 
@@ -96,7 +102,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         modifier = modifier.padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("No tokens yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("No Records yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Text("Tap the + button to add your first code.")
     }

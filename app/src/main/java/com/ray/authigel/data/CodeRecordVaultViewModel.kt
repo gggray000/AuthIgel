@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class CodeRecordVaultViewModel(app: Application) : AndroidViewModel(app) {
-    private val repo = CodeRecordVaultRepository(app.applicationContext)
+    private val repo = VaultDI.repo
 
     val records: StateFlow<List<CodeRecord>> =
         repo.records.stateIn(

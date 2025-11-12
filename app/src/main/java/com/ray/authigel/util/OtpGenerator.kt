@@ -1,4 +1,4 @@
-package com.ray.authigel.domain
+package com.ray.authigel.util
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
