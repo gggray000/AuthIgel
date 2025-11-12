@@ -13,7 +13,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ray.authigel.util.OtpGenerator
-import java.util.UUID
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
@@ -24,10 +23,6 @@ import com.ray.authigel.ui.theme.HedgehogBrown
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
-import androidx.compose.runtime.*
-import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ray.authigel.data.CodeRecordVaultViewModel
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay

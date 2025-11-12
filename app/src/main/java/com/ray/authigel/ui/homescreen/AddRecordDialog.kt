@@ -15,10 +15,9 @@ fun AddRecordDialog(
 ) {
     var issuer by remember { mutableStateOf("") }
     var holder by remember { mutableStateOf("") }
-    var secret by remember { mutableStateOf("") }
+    var secret by remember { mutableStateOf(OtpSeedFactory.randomSecret()) }
     var url by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
-    val initialSecret = remember { OtpSeedFactory.randomSecret() }
 
     fun applyUrl(u: String) {
         error = null
@@ -61,15 +60,16 @@ fun AddRecordDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = secret.ifBlank { initialSecret },
-                    onValueChange = {
-                        secret = it.filter { ch -> ch.isLetterOrDigit() }.uppercase()
-                    },
+                    value = secret,
+                    onValueChange = { },
                     label = { Text("Secret (Base32)") },
                     singleLine = true,
-                    supportingText = { Text("Use A–Z and 2–7; no spaces") },
+                    readOnly = true,
+                    supportingText = { Text("Tap Generate to create a new random secret") },
                     trailingIcon = {
-                        TextButton(onClick = { secret = OtpSeedFactory.randomSecret() }) {
+                        TextButton(onClick = {
+                            secret = OtpSeedFactory.randomSecret()
+                        }) {
                             Text("Generate")
                         }
                     },
