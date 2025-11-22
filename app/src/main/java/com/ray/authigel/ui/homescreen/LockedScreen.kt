@@ -9,12 +9,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.ray.authigel.MainActivity
+import com.ray.authigel.ui.theme.HedgehogBrown
 import com.ray.authigel.util.BiometricAuthenticator
 
 @Composable
@@ -67,9 +69,13 @@ private fun UnLockScreen(onUnlockClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Outlined.Lock,
                 contentDescription = "Locked",
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier.size(72.dp),
+                tint = Color.Black,
             )
-            Button(onClick = onUnlockClick) {
+            Button(onClick = onUnlockClick, colors = ButtonDefaults.buttonColors(
+                containerColor = HedgehogBrown,
+                contentColor = Color.White)
+            ) {
                 Text("Unlock")
             }
         }

@@ -18,27 +18,64 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.LinearProgressIndicator
 import com.ray.authigel.ui.theme.AuthIgelTheme
 import com.ray.authigel.ui.theme.HedgehogBrown
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
 import com.ray.authigel.data.CodeRecordVaultViewModel
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
 
-// --- Screen ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen() {
     val vm: CodeRecordVaultViewModel = viewModel()
     val records by vm.records.collectAsState()
+    var codes by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showAddDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(records) {
+        codes = refreshCodes(records)
+    }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("AuthIgel") }) },
+        topBar = {
+            Column (
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TopAppBar(
+                    title = { Text("AuthIgel", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = HedgehogBrown) },
+                    actions = {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = HedgehogBrown)
+                        }
+
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Export Backup") },
+                                onClick = {
+                                    menuExpanded = false
+                                    // TODO: handle export action
+                                }
+                            )
+                        }
+                    }
+                )
+
+                TotpCountdown(
+                    periodSec = 15,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp),
+                    onCycleComplete = { codes = refreshCodes(records) }
+                )
+                 } },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
@@ -60,8 +97,10 @@ fun HomeScreen() {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(records, key = { it.id }) { record ->
+                        val codeForRecord = codes[record.id] ?: "------"
                         CodeRecordCard(
                             record = record,
+                            code = codeForRecord,
                             onDelete = {
                                 vm.delete(record.id)
                                 scope.launch { snackbarHostState.showSnackbar("${record.issuer} Record Removed") }
@@ -106,13 +145,10 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 @Composable
 private fun CodeRecordCard(
     record: CodeRecord,
+    code: String,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var code by remember {
-    mutableStateOf(OtpGenerator.generateTOTP(record.secret.toByteArray(Charsets.US_ASCII)))
-    }
-
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -128,26 +164,22 @@ private fun CodeRecordCard(
                     .weight(1f)
                     .padding(end = 8.dp)
             ) {
-                Text(record.issuer, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(record.holder, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(record.issuer, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(record.holder, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                    }
+                }
                 Spacer(Modifier.height(4.dp))
                 Text(formatOtp(code), style = MaterialTheme.typography.headlineLarge)
             }
-
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete")
-            }
-        }
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TotpCountdown(
-                periodSec = 15,
-                onCycleComplete = { code = OtpGenerator.generateTOTP(record.secret.toByteArray(Charsets.US_ASCII)) }
-            )
         }
     }
 }
@@ -155,6 +187,15 @@ private fun CodeRecordCard(
 private fun formatOtp(code: String): String {
     // visually group 6-digit codes like "123 456"
     return if (code.length == 6) code.chunked(3).joinToString(" ") else code
+}
+
+private fun refreshCodes(records: List<CodeRecord>): Map<String, String> {
+    return records.associate { record ->
+        val code = OtpGenerator.generateTOTP(
+            record.secret.toByteArray(Charsets.US_ASCII)
+        )
+        record.id to code
+    }
 }
 
 @SuppressLint("SuspiciousIndentation")
@@ -185,49 +226,15 @@ fun TotpCountdown(
     }
 
     val elapsed = ((nowMs / 1000L).toInt()) % periodSec
-    val remaining = periodSec - elapsed
     val progress = 1f - (elapsed.toFloat() / periodSec.toFloat())
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text("Expires in", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(8.dp))
-            CircularCountdown(
-                remaining = remaining,
-                progress = progress,
-                size = 32.dp,
-                stroke = 3.dp
-            )
-        }
+    LinearProgressIndicator(
+        progress = { progress },
+        modifier = modifier,
+        color = HedgehogBrown,
+        trackColor = Color.LightGray
+    )
 }
-
-@Composable
-private fun CircularCountdown(
-    remaining: Int,
-    progress: Float,
-    modifier: Modifier = Modifier,
-    size: Dp,
-    stroke: Dp
-) {
-    Box(
-        modifier.size(size),
-        contentAlignment = Alignment.Center
-    ) {
-        CircularProgressIndicator(
-            progress = { progress.coerceIn(0f, 1f) },
-            modifier = Modifier.matchParentSize(),
-            color = HedgehogBrown,
-            trackColor = Color.Transparent,
-            strokeWidth = stroke
-        )
-        Text(
-            text = "${remaining}s",
-            style = MaterialTheme.typography.labelSmall
-        )
-    }
-}
-
 
 @Preview(showBackground = true)
 @Composable
@@ -241,7 +248,7 @@ private fun HomePreview() {
         .setRawUrl("otpauth://totp/…")
         .build()
         Surface { CodeRecordCard(
-            previewCode, onDelete = {}
+            previewCode, "123456", onDelete = {}
         ) }
     }
 }
