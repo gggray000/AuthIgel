@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.ray.authigel.MainActivity
 import com.ray.authigel.ui.theme.HedgehogBrown
 import com.ray.authigel.util.BiometricAuthenticator
 

@@ -1,6 +1,8 @@
 package com.ray.authigel.ui.homescreen
 
 import android.annotation.SuppressLint
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,9 +26,13 @@ import com.ray.authigel.ui.theme.AuthIgelTheme
 import com.ray.authigel.ui.theme.HedgehogBrown
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import com.ray.authigel.data.CodeRecordVaultViewModel
+import com.ray.authigel.util.CodeRecordExporter
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +44,19 @@ fun HomeScreen() {
     val scope = rememberCoroutineScope()
     var showAddDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
-
+    val context = LocalContext.current
+    val exporter = remember { CodeRecordExporter() }
+    // keep the bytes we want to export
+    var pendingExportBytes by remember { mutableStateOf<ByteArray?>(null) }
+    // SAF launcher
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        val bytes = pendingExportBytes
+        if (uri != null && bytes != null) {
+            exporter.writeToUri(context, uri, bytes)
+        }
+    }
     LaunchedEffect(records) {
         codes = refreshCodes(records)
     }
@@ -63,7 +81,12 @@ fun HomeScreen() {
                                 text = { Text("Export Backup") },
                                 onClick = {
                                     menuExpanded = false
-                                    // TODO: handle export action
+                                    val backupStrings = records.map { it.rawUrl }
+                                    val backupBytes = backupStrings.joinToString("\n").toByteArray()
+                                    pendingExportBytes = backupBytes
+                                    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
+                                    val timestamp = LocalDateTime.now().format(formatter)
+                                    exportLauncher.launch("export_$timestamp.txt")
                                 }
                             )
                         }

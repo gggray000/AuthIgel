@@ -1,10 +1,7 @@
 package com.ray.authigel.data
 
-import android.content.Context
 import androidx.datastore.core.CorruptionException
-import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
-import androidx.datastore.dataStore
 import com.google.protobuf.InvalidProtocolBufferException
 import com.ray.authigel.vault.CodeRecordVault
 import java.io.InputStream
@@ -13,7 +10,6 @@ import com.google.crypto.tink.Aead
 
 class CodeRecordVaultSerializer(private val aead: Aead) : Serializer<CodeRecordVault> {
     override val defaultValue: CodeRecordVault = CodeRecordVault.getDefaultInstance()
-
     // stable AAD so ciphertext is bound to app/schema version
     private val aad: ByteArray = "com.ray.authigel.vault/v1".toByteArray()
 
