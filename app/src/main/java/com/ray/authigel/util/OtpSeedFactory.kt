@@ -1,9 +1,11 @@
 package com.ray.authigel.util
 
 import android.net.Uri
+import org.apache.commons.codec.binary.Base32
 import java.security.SecureRandom
 
 object OtpSeedFactory {
+    private var encoder = Base32()
     private val rng = SecureRandom()
     private val BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".toCharArray()
 
@@ -27,33 +29,12 @@ object OtpSeedFactory {
         val label = "$issuer:$holder"
         // Manually compose to keep label colon readable; encode query params safely
         val qIssuer = Uri.encode(issuer)
-        val qHolder = Uri.encode(holder)
         val qSecret = Uri.encode(secretBase32)
         val qAlgo = Uri.encode(algorithm)
         return "otpauth://totp/$label?secret=$qSecret&issuer=$qIssuer&algorithm=$qAlgo&digits=$digits&period=$period"
     }
 
-    // --- Minimal Base32 (RFC 4648) encoder, no padding ('=') ---
     private fun base32EncodeNoPadding(input: ByteArray): String {
-        val out = StringBuilder((input.size * 8 + 4) / 5)
-        var i = 0
-        var curr = 0
-        var bits = 0
-
-        while (i < input.size) {
-            curr = (curr shl 8) or (input[i].toInt() and 0xFF)
-            bits += 8
-            i++
-            while (bits >= 5) {
-                val index = (curr shr (bits - 5)) and 0x1F
-                bits -= 5
-                out.append(BASE32[index])
-            }
-        }
-        if (bits > 0) {
-            val index = (curr shl (5 - bits)) and 0x1F
-            out.append(BASE32[index])
-        }
-        return out.toString()
+        return encoder.encodeAsString(input)
     }
 }
