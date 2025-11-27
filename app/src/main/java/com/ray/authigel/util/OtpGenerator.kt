@@ -1,18 +1,21 @@
 package com.ray.authigel.util
 
+import org.apache.commons.codec.binary.Base32
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import kotlin.math.pow
 
 object OtpGenerator {
-    fun generateTOTP(secret: ByteArray, timeStepSeconds: Long = 15, digits: Int = 6): String {
+    var decoder = Base32()
+    fun generateTOTP(secret: String, timeStepSeconds: Long = 30, digits: Int = 6): String {
+        val decodedBytes = decoder.decode(secret)
         val counter = System.currentTimeMillis() / 1000 / timeStepSeconds
-        return generateHOTP(secret, counter, digits)
+        return generateHOTP(decodedBytes, counter, digits)
     }
 
-    fun generateHOTP(secret: ByteArray, counter: Long, digits: Int): String {
+    fun generateHOTP(bytes: ByteArray, counter: Long, digits: Int): String {
         val mac = Mac.getInstance("HmacSHA1")
-        mac.init(SecretKeySpec(secret, "HmacSHA1"))
+        mac.init(SecretKeySpec(bytes, "HmacSHA1"))
 
         // Convert counter (long) → 8-byte array (big endian)
         val counterBytes = ByteArray(8)

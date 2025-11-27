@@ -29,8 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.ray.authigel.data.CodeRecordVaultViewModel
 import com.ray.authigel.util.CodeRecordExporter
+import com.ray.authigel.util.CodeRecordImporter
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
+import java.io.FileNotFoundException
+import java.io.InputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -46,9 +49,7 @@ fun HomeScreen() {
     var menuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val exporter = remember { CodeRecordExporter() }
-    // keep the bytes we want to export
     var pendingExportBytes by remember { mutableStateOf<ByteArray?>(null) }
-    // SAF launcher
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/plain")
     ) { uri ->
@@ -57,6 +58,29 @@ fun HomeScreen() {
             exporter.writeToUri(context, uri, bytes)
         }
     }
+    val importer = remember { CodeRecordImporter() }
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) {uri ->
+        if (uri != null) {
+            var inputStream: InputStream? = null;
+            try{
+                inputStream = context.contentResolver.openInputStream(uri)
+            } catch (_: FileNotFoundException) {
+                scope.launch { snackbarHostState.showSnackbar("Cannot Open File.") }
+                return@rememberLauncherForActivityResult
+            }
+            if (inputStream != null) {
+                val lines = importer.getLines(inputStream);
+                val newRecords = importer.convertToRecords(lines);
+                newRecords.forEach {
+                    vm.add(it)
+                }
+                scope.launch { snackbarHostState.showSnackbar("Import succeeded.") }
+            }
+        }
+    }
+
     LaunchedEffect(records) {
         codes = refreshCodes(records)
     }
@@ -89,12 +113,19 @@ fun HomeScreen() {
                                     exportLauncher.launch("export_$timestamp.txt")
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("Import TXT File") },
+                                onClick = {
+                                    menuExpanded = false
+                                    importLauncher.launch(arrayOf("text/plain"))
+                                }
+                            )
                         }
                     }
                 )
 
                 TotpCountdown(
-                    periodSec = 15,
+                    periodSec = 30,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp),
                     onCycleComplete = { codes = refreshCodes(records) }
                 )
@@ -143,7 +174,7 @@ fun HomeScreen() {
                     .setIssuer(issuer)
                     .setHolder(holder)
                     .setSecret(secret)         // Base32 secret (unchanged)
-                    .setRawUrl(url ?: "")      // optional otpauth URL
+                    .setRawUrl(url ?: "")
                     .build()
                 vm.add(record)
                 showAddDialog = false
@@ -215,7 +246,7 @@ private fun formatOtp(code: String): String {
 private fun refreshCodes(records: List<CodeRecord>): Map<String, String> {
     return records.associate { record ->
         val code = OtpGenerator.generateTOTP(
-            record.secret.toByteArray(Charsets.US_ASCII)
+            record.secret
         )
         record.id to code
     }
