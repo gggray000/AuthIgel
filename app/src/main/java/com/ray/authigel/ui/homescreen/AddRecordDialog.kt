@@ -15,7 +15,7 @@ fun AddRecordDialog(
 ) {
     var issuer by remember { mutableStateOf("") }
     var holder by remember { mutableStateOf("") }
-    var secret by remember { mutableStateOf(OtpSeedFactory.randomSecret()) }
+    var secret by remember { mutableStateOf(OtpSeedFactory.generateRandomSecret()) }
     var url by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -68,7 +68,7 @@ fun AddRecordDialog(
                     supportingText = { Text("Tap Generate to create a new random secret") },
                     trailingIcon = {
                         TextButton(onClick = {
-                            secret = OtpSeedFactory.randomSecret()
+                            secret = OtpSeedFactory.generateRandomSecret()
                         }) {
                             Text("Generate")
                         }

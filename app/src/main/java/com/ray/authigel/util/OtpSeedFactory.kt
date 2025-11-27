@@ -10,10 +10,10 @@ object OtpSeedFactory {
     private val BASE32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".toCharArray()
 
     /** Generate a random Base32 secret (default: 20 bytes ≈ 32 Base32 chars). */
-    fun randomSecret(numBytes: Int = 20): String {
+    fun generateRandomSecret(numBytes: Int = 20): String {
         val bytes = ByteArray(numBytes)
         rng.nextBytes(bytes)
-        return base32EncodeNoPadding(bytes)
+        return encoder.encodeAsString(bytes)
     }
 
     /** Build an otpauth URL for TOTP. */
@@ -32,9 +32,5 @@ object OtpSeedFactory {
         val qSecret = Uri.encode(secretBase32)
         val qAlgo = Uri.encode(algorithm)
         return "otpauth://totp/$label?secret=$qSecret&issuer=$qIssuer&algorithm=$qAlgo&digits=$digits&period=$period"
-    }
-
-    private fun base32EncodeNoPadding(input: ByteArray): String {
-        return encoder.encodeAsString(input)
     }
 }
