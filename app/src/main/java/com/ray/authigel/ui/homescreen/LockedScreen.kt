@@ -22,19 +22,30 @@ import com.ray.authigel.util.BiometricAuthenticator
 fun LockedScreen(
     activity: FragmentActivity,
     homeScreen: @Composable (() -> Unit),
+    timeoutMinutes: Long
 ) {
     var isUnlocked by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     val authenticator = remember(activity) { BiometricAuthenticator(activity) }
+    var lastBackgroundTimestamp by rememberSaveable { mutableStateOf(0L) }
 
-    // Run auth as soon as the screen becomes visible
     LaunchedEffect(Unit) {
         isUnlocked = false
     }
 
-    // re-lock on process recreation only (state is saveable in memory).
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        lastBackgroundTimestamp = System.currentTimeMillis()
+    }
+
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        isUnlocked = false
+        if (lastBackgroundTimestamp != 0L) {
+            val elapsedMs = System.currentTimeMillis() - lastBackgroundTimestamp
+            val timeoutMs = timeoutMinutes * 60_000L
+
+            if (elapsedMs > timeoutMs) {
+                isUnlocked = false
+            }
+        }
     }
 
     if (isUnlocked) {

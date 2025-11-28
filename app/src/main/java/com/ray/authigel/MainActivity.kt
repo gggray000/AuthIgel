@@ -18,9 +18,11 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         setContent {
             AuthIgelTheme {
-                LockedScreen(activity = this){
-                    HomeScreen()
-                }
+                LockedScreen(
+                    activity = this@MainActivity,
+                    {HomeScreen()},
+                     timeoutMinutes = 5L
+                )
             }
         }
     }

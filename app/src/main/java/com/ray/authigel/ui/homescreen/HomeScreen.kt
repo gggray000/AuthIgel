@@ -46,7 +46,8 @@ fun HomeScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showAddDialog by remember { mutableStateOf(false) }
-    var menuExpanded by remember { mutableStateOf(false) }
+    var fabMenuExpanded by remember { mutableStateOf(false) }
+    var topMenuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val exporter = remember { CodeRecordExporter() }
     var pendingExportBytes by remember { mutableStateOf<ByteArray?>(null) }
@@ -80,6 +81,16 @@ fun HomeScreen() {
             }
         }
     }
+    val qrScanner = com.ray.authigel.util.rememberQrCodeScanner(
+        onResult = { qrText ->
+            val newRecords = importer.convertToRecords(listOf(qrText))
+            newRecords.forEach { vm.add(it) }
+            scope.launch { snackbarHostState.showSnackbar("QR code imported") }
+        },
+        onError = { msg ->
+            scope.launch { snackbarHostState.showSnackbar(msg) }
+        }
+    )
 
     LaunchedEffect(records) {
         codes = refreshCodes(records)
@@ -93,18 +104,18 @@ fun HomeScreen() {
                 TopAppBar(
                     title = { Text("AuthIgel", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = HedgehogBrown) },
                     actions = {
-                        IconButton(onClick = { menuExpanded = true }) {
+                        IconButton(onClick = { topMenuExpanded = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = HedgehogBrown)
                         }
 
                         DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false }
+                            expanded = topMenuExpanded,
+                            onDismissRequest = { topMenuExpanded = false }
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Export Backup") },
                                 onClick = {
-                                    menuExpanded = false
+                                    topMenuExpanded = false
                                     val backupStrings = records.map { it.rawUrl }
                                     val backupBytes = backupStrings.joinToString("\n").toByteArray()
                                     pendingExportBytes = backupBytes
@@ -116,7 +127,7 @@ fun HomeScreen() {
                             DropdownMenuItem(
                                 text = { Text("Import TXT File") },
                                 onClick = {
-                                    menuExpanded = false
+                                    topMenuExpanded = false
                                     importLauncher.launch(arrayOf("text/plain"))
                                 }
                             )
@@ -132,12 +143,33 @@ fun HomeScreen() {
                  } },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(
-                containerColor = HedgehogBrown,
-                contentColor = Color.White,
-                onClick = { showAddDialog = true }
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add")
+            Box {
+                FloatingActionButton(
+                    containerColor = HedgehogBrown,
+                    contentColor = Color.White,
+                    onClick = { fabMenuExpanded = true }
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add")
+                }
+                DropdownMenu(
+                    expanded = fabMenuExpanded,
+                    onDismissRequest = { fabMenuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Scan QR Code") },
+                        onClick = {
+                            fabMenuExpanded = false
+                            qrScanner.startScan()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Manually Input") },
+                        onClick = {
+                            fabMenuExpanded = false
+                            showAddDialog = true
+                        }
+                    )
+                }
             }
         }
     ) { inner ->
