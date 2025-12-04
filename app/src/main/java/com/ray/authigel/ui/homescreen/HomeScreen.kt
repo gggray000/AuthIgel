@@ -57,6 +57,9 @@ fun HomeScreen() {
         val bytes = pendingExportBytes
         if (uri != null && bytes != null) {
             exporter.writeToUri(context, uri, bytes)
+            scope.launch {
+                snackbarHostState.showSnackbar("Backup exported successfully to $uri with ${records.size} records.")
+            }
         }
     }
     val importer = remember { CodeRecordImporter() }
@@ -73,11 +76,14 @@ fun HomeScreen() {
             }
             if (inputStream != null) {
                 val lines = importer.getLines(inputStream);
+                val totalCounts = lines.size;
+                var successfulCounts = 0;
                 val newRecords = importer.convertToRecords(lines);
                 newRecords.forEach {
                     vm.add(it)
+                    successfulCounts += 1
                 }
-                scope.launch { snackbarHostState.showSnackbar("Import succeeded.") }
+                scope.launch { snackbarHostState.showSnackbar("Successfully imported $successfulCounts out of $totalCounts records.") }
             }
         }
     }
