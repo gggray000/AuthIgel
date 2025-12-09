@@ -19,9 +19,6 @@ fun AddRecordDialog(
     var url by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var isUrlValid by remember { mutableStateOf(true) }
-    val urlError by derivedStateOf{
-        !isUrlValid && url.isNotEmpty()
-    }
 
     fun validateUrl(u: String) {
         error = null
