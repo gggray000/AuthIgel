@@ -18,25 +18,28 @@ fun AddRecordDialog(
     var secret by remember { mutableStateOf(OtpSeedFactory.generateRandomSecret()) }
     var url by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var isUrlValid by remember { mutableStateOf(true) }
+    val urlError by derivedStateOf{
+        !isUrlValid && url.isNotEmpty()
+    }
 
-    fun applyUrl(u: String) {
+    fun validateUrl(u: String) {
         error = null
         runCatching {
             val parsed = Uri.parse(u.trim())
-            if (parsed.scheme != "otpauth") throw IllegalArgumentException("Not an otpauth:// URL")
-
+            if (parsed.scheme != "otpauth") throw IllegalArgumentException()
             val labelRaw = parsed.path?.removePrefix("/")?.trim().orEmpty()
             val labelParts = labelRaw.split(":", limit = 2)
             val labelIssuer = parsed.getQueryParameter("issuer")?.trim()
             val labelHolder = if (labelParts.size == 2) labelParts[1].trim() else labelParts[0].trim()
             val s = parsed.getQueryParameter("secret")?.trim().orEmpty()
             if (s.isEmpty()) throw IllegalArgumentException("Missing 'secret' in URL")
-
             issuer = (labelIssuer ?: (if (labelParts.size == 2) labelParts[0].trim() else "")).ifBlank { issuer }
             holder = labelHolder.ifBlank { holder }
             secret = s.uppercase()
+            isUrlValid = true
         }.onFailure { ex ->
-            error = ex.message ?: "Invalid otpauth URL"
+            isUrlValid = false
         }
     }
 
@@ -48,21 +51,21 @@ fun AddRecordDialog(
                 OutlinedTextField(
                     value = issuer,
                     onValueChange = { issuer = it },
-                    label = { Text("Issuer (e.g., GitHub)") },
+                    label = { Text("Issuer (e.g. Hedgehog Cloud)*") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = holder,
                     onValueChange = { holder = it },
-                    label = { Text("Holder (e.g., you@example.com)") },
+                    label = { Text("Holder (e.g., foo@bar.com)*") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = secret,
                     onValueChange = { },
-                    label = { Text("Secret (Base32)") },
+                    label = { Text("Secret (Base32)*") },
                     singleLine = true,
                     readOnly = true,
                     supportingText = { Text("Tap Generate to create a new random secret") },
@@ -70,7 +73,7 @@ fun AddRecordDialog(
                         TextButton(onClick = {
                             secret = OtpSeedFactory.generateRandomSecret()
                         }) {
-                            Text("Generate")
+                            Text("Generate Secret")
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -92,17 +95,18 @@ fun AddRecordDialog(
                                 error = ex.message ?: "Failed to build URL"
                             }
                         }
-                    ) { Text("Create URL") }
+                    ) { Text("Generate URL") }
                 }
                 OutlinedTextField(
                     value = url,
-                    onValueChange = {
-                        url = it
-                        if (it.startsWith("otpauth://")) applyUrl(it)
-                    },
-                    label = { Text("OTPAuth URL (auto or paste)") },
+                    onValueChange = { value ->
+                        url = value
+                        validateUrl(value) },
+                    label = { Text("OTPAuth URL (generated or pasted)") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isUrlValid,
+                    supportingText = {if(!isUrlValid) { Text("Invalid OTPAuth URL.") }}
                 )
                 if (error != null) {
                     Text(
@@ -114,7 +118,7 @@ fun AddRecordDialog(
             }
         },
         confirmButton = {
-            val canSave = issuer.isNotBlank() && holder.isNotBlank() && secret.isNotBlank()
+            val canSave = issuer.isNotBlank() && holder.isNotBlank() && secret.isNotBlank() && url.isNotBlank() && isUrlValid
             TextButton(
                 enabled = canSave,
                 onClick = {
