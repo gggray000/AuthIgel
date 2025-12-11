@@ -37,4 +37,9 @@ object VaultDI {
             initialized = true
         }
     }
+
+    fun provideRepository(context: Context): CodeRecordVaultRepository {
+        return CodeRecordVaultRepository(dataStore)
+    }
+
 }

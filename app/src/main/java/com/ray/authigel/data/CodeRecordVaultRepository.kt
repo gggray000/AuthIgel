@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import com.ray.authigel.vault.CodeRecord
 import com.ray.authigel.vault.CodeRecordVault
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class CodeRecordVaultRepository(private val dataStore: DataStore<CodeRecordVault>) {
@@ -25,5 +26,9 @@ class CodeRecordVaultRepository(private val dataStore: DataStore<CodeRecordVault
 
     suspend fun replaceAll(records: List<CodeRecord>) {
         dataStore.updateData { CodeRecordVault.newBuilder().addAllTokens(records).build() }
+    }
+
+    suspend fun getAll(): List<CodeRecord> {
+        return dataStore.data.first().tokensList
     }
 }

@@ -4,34 +4,34 @@ import android.annotation.SuppressLint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ray.authigel.util.OtpGenerator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.LinearProgressIndicator
-import com.ray.authigel.ui.theme.AuthIgelTheme
-import com.ray.authigel.ui.theme.HedgehogBrown
-import kotlinx.coroutines.launch
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ray.authigel.data.CodeRecordVaultViewModel
+import com.ray.authigel.ui.theme.AuthIgelTheme
+import com.ray.authigel.ui.theme.HedgehogBrown
+import com.ray.authigel.util.AutoBackup.AutoBackupPreferences
+import com.ray.authigel.util.AutoBackup.AutoBackupScheduler
 import com.ray.authigel.util.CodeRecordExporter
 import com.ray.authigel.util.CodeRecordImporter
+import com.ray.authigel.util.OtpGenerator
+import com.ray.authigel.util.rememberQrCodeScanner
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.time.LocalDateTime
@@ -65,6 +65,7 @@ fun HomeScreen() {
             }
         }
     }
+    var showAutobackupDialog by remember { mutableStateOf(false) }
     val importer = remember { CodeRecordImporter() }
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -90,7 +91,7 @@ fun HomeScreen() {
             }
         }
     }
-    val qrScanner = com.ray.authigel.util.rememberQrCodeScanner(
+    val qrScanner = rememberQrCodeScanner(
         onResult = { qrText ->
             val newRecords = importer.convertToRecords(listOf(qrText))
             newRecords.forEach { vm.add(it) }
@@ -122,7 +123,7 @@ fun HomeScreen() {
                             onDismissRequest = { topMenuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Export Backup") },
+                                text = { Text("Manually Export Backup") },
                                 onClick = {
                                     topMenuExpanded = false
                                     val timestamp = LocalDateTime.now()
@@ -131,10 +132,10 @@ fun HomeScreen() {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Import TXT File") },
+                                text = { Text("Auto Backup Settings") },
                                 onClick = {
                                     topMenuExpanded = false
-                                    importLauncher.launch(arrayOf("text/plain"))
+                                    showAutobackupDialog = true
                                 }
                             )
                         }
@@ -169,10 +170,17 @@ fun HomeScreen() {
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Manually Input") },
+                        text = { Text("Manually Add Details") },
                         onClick = {
                             fabMenuExpanded = false
                             showAddDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Import TXT File") },
+                        onClick = {
+                            fabMenuExpanded = false
+                            importLauncher.launch(arrayOf("text/plain"))
                         }
                     )
                 }
@@ -207,7 +215,7 @@ fun HomeScreen() {
         AddRecordDialog(
             onDismiss = { showAddDialog = false },
             onConfirm = { issuer, holder, secret, url ->
-                val record = com.ray.authigel.vault.CodeRecord.newBuilder()
+                val record = CodeRecord.newBuilder()
                     .setId(System.currentTimeMillis().toString())
                     .setIssuer(issuer)
                     .setHolder(holder)
@@ -217,6 +225,31 @@ fun HomeScreen() {
                 vm.add(record)
                 showAddDialog = false
                 scope.launch { snackbarHostState.showSnackbar("Record added") }
+            }
+        )
+    }
+    if (showAutobackupDialog) {
+        var (enabled, period, uri) = AutoBackupPreferences.load(context)
+        AutoBackupDialog(
+            initialEnabled = enabled,
+            initialPeriodDays = period.toInt(),
+            initialUri = uri,
+            onDismiss = { showAutobackupDialog = false },
+            onConfirm = { enabled, periodDays, uri ->
+                showAutobackupDialog = false
+                scope.launch {
+                    AutoBackupPreferences.save(context, enabled, periodDays, uri)
+                    if (enabled && uri != null) {
+                        AutoBackupScheduler.runImmediateBackup(context)
+                        AutoBackupScheduler.schedulePeriodicBackup(context, periodDays)
+                        snackbarHostState.showSnackbar(
+                            "Auto backup enabled (every $periodDays day(s)). Backup Location: $uri"
+                        )
+                    } else {
+                        AutoBackupScheduler.cancelPeriodicBackup(context)
+                        snackbarHostState.showSnackbar("Auto backup disabled.")
+                    }
+                }
             }
         )
     }
