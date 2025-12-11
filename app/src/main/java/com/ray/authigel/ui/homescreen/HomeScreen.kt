@@ -55,7 +55,14 @@ fun HomeScreen() {
         contract = ActivityResultContracts.CreateDocument("text/plain")
     ) { uri ->
         if (uri != null) {
-            exporter.writeToUri(context, uri, backupBytes)
+            var result = exporter.writeToUri(context, uri, backupBytes)
+            scope.launch {
+                if (result) {
+                    snackbarHostState.showSnackbar("Successfully wrote ${records.size} record(s) to $uri")
+                } else {
+                    snackbarHostState.showSnackbar("Failed to export backup.")
+                }
+            }
         }
     }
     val importer = remember { CodeRecordImporter() }
