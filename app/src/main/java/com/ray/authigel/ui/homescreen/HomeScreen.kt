@@ -50,16 +50,12 @@ fun HomeScreen() {
     var topMenuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val exporter = remember { CodeRecordExporter() }
-    var pendingExportBytes by remember { mutableStateOf<ByteArray?>(null) }
+    val backupBytes = remember(records) { exporter.buildBackupBytes(records) }
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/plain")
     ) { uri ->
-        val bytes = pendingExportBytes
-        if (uri != null && bytes != null) {
-            exporter.writeToUri(context, uri, bytes)
-            scope.launch {
-                snackbarHostState.showSnackbar("Backup exported successfully to $uri with ${records.size} records.")
-            }
+        if (uri != null) {
+            exporter.writeToUri(context, uri, backupBytes)
         }
     }
     val importer = remember { CodeRecordImporter() }
@@ -122,11 +118,8 @@ fun HomeScreen() {
                                 text = { Text("Export Backup") },
                                 onClick = {
                                     topMenuExpanded = false
-                                    val backupStrings = records.map { it.rawUrl }
-                                    val backupBytes = backupStrings.joinToString("\n").toByteArray()
-                                    pendingExportBytes = backupBytes
-                                    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
-                                    val timestamp = LocalDateTime.now().format(formatter)
+                                    val timestamp = LocalDateTime.now()
+                                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
                                     exportLauncher.launch("export_$timestamp.txt")
                                 }
                             )
