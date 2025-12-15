@@ -14,4 +14,5 @@ message CodeRecord {
 
 message CodeRecordVault {
   repeated CodeRecord tokens = 1;
+  bytes encrypted_backup_password = 10;
 }

@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ray.authigel.data.BackupPasswordKeystore
 import com.ray.authigel.data.CodeRecordVaultViewModel
 import com.ray.authigel.ui.theme.AuthIgelTheme
 import com.ray.authigel.ui.theme.HedgehogBrown
@@ -101,6 +102,57 @@ fun HomeScreen() {
             scope.launch { snackbarHostState.showSnackbar(msg) }
         }
     )
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var pendingRestorePassword by remember { mutableStateOf<CharArray?>(null) }
+
+    val importEncryptedLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) {
+            pendingRestorePassword?.fill('\u0000')
+            pendingRestorePassword = null
+            return@rememberLauncherForActivityResult
+        }
+
+        val pw = pendingRestorePassword
+        if (pw == null) {
+            scope.launch { snackbarHostState.showSnackbar("Missing password. Please try again.") }
+            return@rememberLauncherForActivityResult
+        }
+
+        scope.launch {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                if (inputStream == null) {
+                    snackbarHostState.showSnackbar("Cannot open file.")
+                    return@launch
+                }
+
+                inputStream.use { ins ->
+                    // decrypt -> lines
+                    when (val dec = importer.decryptEncryptedBackup(ins, pw)) {
+                        is CodeRecordImporter.DecryptResult.Success -> {
+                            val newRecords = importer.convertToRecords(dec.lines)
+                            newRecords.forEach { vm.add(it) }
+                            snackbarHostState.showSnackbar("Imported ${newRecords.size} record(s).")
+                        }
+                        is CodeRecordImporter.DecryptResult.WrongPassword -> {
+                            snackbarHostState.showSnackbar("Wrong password.")
+                        }
+                        is CodeRecordImporter.DecryptResult.InvalidFormat -> {
+                            snackbarHostState.showSnackbar("Invalid backup: ${dec.reason}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                snackbarHostState.showSnackbar("Import failed.")
+            } finally {
+                pendingRestorePassword?.fill('\u0000')
+                pendingRestorePassword = null
+            }
+        }
+    }
 
     LaunchedEffect(records) {
         codes = refreshCodes(records)
@@ -123,7 +175,7 @@ fun HomeScreen() {
                             onDismissRequest = { topMenuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Manually Export Backup") },
+                                text = { Text("Export plain text records") },
                                 onClick = {
                                     topMenuExpanded = false
                                     val timestamp = LocalDateTime.now()
@@ -132,7 +184,7 @@ fun HomeScreen() {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Auto Backup Settings") },
+                                text = { Text("Auto-Backup settings") },
                                 onClick = {
                                     topMenuExpanded = false
                                     showAutobackupDialog = true
@@ -163,24 +215,31 @@ fun HomeScreen() {
                     onDismissRequest = { fabMenuExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Scan QR Code") },
+                        text = { Text("Scan QR-Code") },
                         onClick = {
                             fabMenuExpanded = false
                             qrScanner.startScan()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Manually Add Details") },
+                        text = { Text("Manually add a record") },
                         onClick = {
                             fabMenuExpanded = false
                             showAddDialog = true
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Import TXT File") },
+                        text = { Text("Import TXT file") },
                         onClick = {
                             fabMenuExpanded = false
                             importLauncher.launch(arrayOf("text/plain"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Restore from encrypted backup") },
+                        onClick = {
+                            fabMenuExpanded = false
+                            showRestoreDialog = true
                         }
                     )
                 }
@@ -235,11 +294,16 @@ fun HomeScreen() {
             initialPeriodDays = period.toInt(),
             initialUri = uri,
             onDismiss = { showAutobackupDialog = false },
-            onConfirm = { enabled, periodDays, uri ->
+            onConfirm = { enabled, periodDays, uri, password ->
                 showAutobackupDialog = false
                 scope.launch {
                     AutoBackupPreferences.save(context, enabled, periodDays, uri)
                     if (enabled && uri != null) {
+                        if (password != null && password.isNotEmpty()) {
+                            val encrypted = BackupPasswordKeystore.encrypt(password)
+                            vm.storeEncryptedBackupPassword(encrypted)
+                            password.fill('\u0000')
+                        }
                         AutoBackupScheduler.runImmediateBackup(context)
                         AutoBackupScheduler.schedulePeriodicBackup(context, periodDays)
                         snackbarHostState.showSnackbar(
@@ -247,9 +311,26 @@ fun HomeScreen() {
                         )
                     } else {
                         AutoBackupScheduler.cancelPeriodicBackup(context)
-                        snackbarHostState.showSnackbar("Auto backup disabled.")
+                        snackbarHostState.showSnackbar("Auto backup disabled, backup password cleared.")
+                        vm.clearEncryptedBackupPassword()
+
                     }
                 }
+            }
+        )
+    }
+    if (showRestoreDialog) {
+        RestoreBackupDialog(
+            title = "Restore Encrypted Backup",
+            confirmText = "Next",
+            onDismiss = {
+                showRestoreDialog = false
+            },
+            onConfirm = { password ->
+                showRestoreDialog = false
+                pendingRestorePassword?.fill('\u0000')
+                pendingRestorePassword = password
+                importEncryptedLauncher.launch(arrayOf("*/*"))
             }
         )
     }

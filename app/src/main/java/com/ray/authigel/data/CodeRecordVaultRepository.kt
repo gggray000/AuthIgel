@@ -31,4 +31,28 @@ class CodeRecordVaultRepository(private val dataStore: DataStore<CodeRecordVault
     suspend fun getAll(): List<CodeRecord> {
         return dataStore.data.first().tokensList
     }
+
+    suspend fun storeEncryptedBackupPassword(encrypted: ByteArray) {
+        dataStore.updateData { current ->
+            current.toBuilder()
+                .setEncryptedBackupPassword(
+                    com.google.protobuf.ByteString.copyFrom(encrypted)
+                )
+                .build()
+        }
+    }
+
+    suspend fun getEncryptedBackupPassword(): ByteArray? {
+        val vault = dataStore.data.first()
+        val bs = vault.encryptedBackupPassword
+        return if (bs.isEmpty) null else bs.toByteArray()
+    }
+
+    suspend fun clearEncryptedBackupPassword() {
+        dataStore.updateData { current ->
+            current.toBuilder()
+                .clearEncryptedBackupPassword()
+                .build()
+        }
+    }
 }

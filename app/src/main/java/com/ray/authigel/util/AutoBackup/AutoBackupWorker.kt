@@ -4,8 +4,10 @@ import android.content.Context
 import android.provider.DocumentsContract
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.ray.authigel.data.BackupPasswordKeystore
 import com.ray.authigel.data.VaultDI
 import com.ray.authigel.util.CodeRecordExporter
+import com.ray.authigel.util.autoBackup.BackupCrypto
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -23,32 +25,34 @@ CoroutineWorker(appContext, workerParams) {
         }
 
         return try {
-            val dirUri = DocumentsContract.buildDocumentUriUsingTree(
-                folderUri,
-                DocumentsContract.getTreeDocumentId(folderUri)
-            )
             val repo = VaultDI.provideRepository(context)
-            val records = repo.getAll()
-            val bytes = exporter.buildBackupBytes(records)
-            val timestamp = LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
-            val fileName = "AuthIgel_AutoBackup_$timestamp.txt"
+            val encryptedPwBlob = repo.getEncryptedBackupPassword()
+                ?: return Result.failure()
+            val password: CharArray = BackupPasswordKeystore.decrypt(encryptedPwBlob)
+            try {
+                val records = repo.getAll()
+                val plaintext = exporter.buildBackupBytes(records)
+                // PBKDF2 + AES-GCM
+                val encryptedBackupFileBytes = BackupCrypto.encrypt(password, plaintext)
+                val dirUri = DocumentsContract.buildDocumentUriUsingTree(
+                    folderUri,
+                    DocumentsContract.getTreeDocumentId(folderUri)
+                )
+                val timestamp = LocalDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
+                val fileName = "AuthIgel_AutoBackup_$timestamp.igel"
+                val backupUri = DocumentsContract.createDocument(
+                    context.contentResolver,
+                    dirUri,
+                    "application/octet-stream",
+                    fileName
+                ) ?: return Result.failure()
 
-            val backupUri = DocumentsContract.createDocument(
-                context.contentResolver,
-                dirUri,
-                "text/plain",
-                fileName
-            )
-
-            if (backupUri == null) {
-                return Result.failure()
+                val ok = exporter.writeToUri(context, backupUri, encryptedBackupFileBytes)
+                if (ok) Result.success() else Result.failure()
+            } finally {
+                password.fill('\u0000')
             }
-
-            val ok = exporter.writeToUri(context, backupUri, bytes)
-
-            if (ok) Result.success() else Result.failure()
-
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure()

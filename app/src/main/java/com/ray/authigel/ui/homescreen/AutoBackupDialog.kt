@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -18,13 +20,15 @@ fun AutoBackupDialog(
     initialPeriodDays: Int,
     initialUri: Uri?,
     onDismiss: () -> Unit,
-    onConfirm: (enabled: Boolean, periodDays: Int, uri: Uri?) -> Unit
+    onConfirm: (enabled: Boolean, periodDays: Int, uri: Uri?, password: CharArray?) -> Unit
 ) {
     var enabled by remember { mutableStateOf(initialEnabled) }
     var periodDays by remember { mutableStateOf(initialPeriodDays) }
     var selectedUri by remember { mutableStateOf(initialUri) }
 
-    // Period options: adjust as you like
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
     val periodOptions = listOf(1, 3, 7, 14, 30)
     var periodMenuExpanded by remember { mutableStateOf(false) }
 
@@ -124,6 +128,45 @@ fun AutoBackupDialog(
                         }
                     }
                 }
+                if (enabled) {
+                    HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
+                    Text("Encryption password", fontWeight = FontWeight.SemiBold)
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        singleLine = true,
+                        visualTransformation =
+                            if (showPassword) VisualTransformation.None
+                            else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text("Confirm password") },
+                        singleLine = true,
+                        isError = confirmPassword.isNotEmpty() && password != confirmPassword,
+                        visualTransformation =
+                            if (showPassword) VisualTransformation.None
+                            else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    TextButton(onClick = { showPassword = !showPassword }) {
+                        Text(if (showPassword) "Hide password" else "Show password")
+                    }
+
+                    if (confirmPassword.isNotEmpty() && password != confirmPassword) {
+                        Text(
+                            "Passwords do not match",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
@@ -135,7 +178,14 @@ fun AutoBackupDialog(
             TextButton(
                 enabled = canConfirm,
                 onClick = {
-                    onConfirm(enabled, periodDays, selectedUri)
+                    onConfirm(
+                        enabled,
+                        periodDays,
+                        selectedUri,
+                        if (enabled) password.toCharArray() else null
+                    )
+                    password = ""
+                    confirmPassword = ""
                 }
             ) {
                 Text("Save Preference")
