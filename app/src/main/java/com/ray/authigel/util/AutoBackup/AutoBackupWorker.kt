@@ -7,7 +7,6 @@ import androidx.work.WorkerParameters
 import com.ray.authigel.data.BackupPasswordKeystore
 import com.ray.authigel.data.VaultDI
 import com.ray.authigel.util.CodeRecordExporter
-import com.ray.authigel.util.autoBackup.BackupCrypto
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -40,11 +39,11 @@ CoroutineWorker(appContext, workerParams) {
                 )
                 val timestamp = LocalDateTime.now()
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
-                val fileName = "AuthIgel_AutoBackup_$timestamp.igel"
+                val fileName = "AuthIgel_AutoBackup_$timestamp.txt"
                 val backupUri = DocumentsContract.createDocument(
                     context.contentResolver,
                     dirUri,
-                    "application/octet-stream",
+                    "text/plain",
                     fileName
                 ) ?: return Result.failure()
 
