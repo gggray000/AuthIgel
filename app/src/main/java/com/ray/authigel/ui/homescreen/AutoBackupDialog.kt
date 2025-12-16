@@ -3,11 +3,14 @@ package com.ray.authigel.ui.homescreen
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -19,13 +22,14 @@ fun AutoBackupDialog(
     initialEnabled: Boolean,
     initialPeriodDays: Int,
     initialUri: Uri?,
+    hasPassword: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (enabled: Boolean, periodDays: Int, uri: Uri?, password: CharArray?) -> Unit
 ) {
     var enabled by remember { mutableStateOf(initialEnabled) }
     var periodDays by remember { mutableStateOf(initialPeriodDays) }
     var selectedUri by remember { mutableStateOf(initialUri) }
-
+    var hasPassword by remember { mutableStateOf(hasPassword) }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
@@ -103,9 +107,7 @@ fun AutoBackupDialog(
                             value = "$periodDays day(s)",
                             onValueChange = {},
                             readOnly = true,
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             enabled = enabled,
                             label = { Text("How often to backup") },
                             trailingIcon = {
@@ -131,6 +133,26 @@ fun AutoBackupDialog(
                 if (enabled) {
                     HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
                     Text("Encryption password", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = "IMPORTANT: Please make sure to save password safely, this is the only way to decrypt the auto-backup file.",
+                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Red),
+                    )
+                    if(hasPassword) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            tonalElevation = 1.dp,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Existing password detected, saving new password will overwrite it.",
+                                modifier = Modifier.padding(12.dp),
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
 
                     OutlinedTextField(
                         value = password,
@@ -171,7 +193,7 @@ fun AutoBackupDialog(
         },
         confirmButton = {
             val canConfirm = if(enabled){
-                selectedUri !== null && periodDays !== null
+                selectedUri != null && password != "" && confirmPassword != "" && confirmPassword == password
             } else {
                 true
             }

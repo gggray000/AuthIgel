@@ -20,6 +20,13 @@ class CodeRecordVaultViewModel(app: Application) : AndroidViewModel(app) {
             emptyList()
         )
 
+    val hasPassword = repo.hasEncryptedBackupPassword
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false
+        )
+
     fun add(record: CodeRecord) = viewModelScope.launch {
         repo.add(record)
     }

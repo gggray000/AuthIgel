@@ -11,6 +11,11 @@ class CodeRecordVaultRepository(private val dataStore: DataStore<CodeRecordVault
     val records: Flow<List<CodeRecord>> =
         dataStore.data.map { it.tokensList }
 
+    val hasEncryptedBackupPassword: Flow<Boolean> =
+        dataStore.data.map { vault ->
+            !vault.encryptedBackupPassword.isEmpty
+        }
+
     suspend fun add(record: CodeRecord) {
         dataStore.updateData { current ->
             current.toBuilder().addTokens(record).build()

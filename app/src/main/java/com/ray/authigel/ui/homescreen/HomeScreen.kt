@@ -66,6 +66,7 @@ fun HomeScreen() {
             }
         }
     }
+    val hasPassword by vm.hasPassword.collectAsState()
     var showAutobackupDialog by remember { mutableStateOf(false) }
     val importer = remember { CodeRecordImporter() }
     val importLauncher = rememberLauncherForActivityResult(
@@ -128,9 +129,8 @@ fun HomeScreen() {
                     return@launch
                 }
 
-                inputStream.use { ins ->
-                    // decrypt -> lines
-                    when (val dec = importer.decryptEncryptedBackup(ins, pw)) {
+                inputStream.use { inputStream ->
+                    when (val dec = importer.decryptEncryptedBackup(inputStream, pw)) {
                         is CodeRecordImporter.DecryptResult.Success -> {
                             val newRecords = importer.convertToRecords(dec.lines)
                             newRecords.forEach { vm.add(it) }
@@ -293,6 +293,7 @@ fun HomeScreen() {
             initialEnabled = enabled,
             initialPeriodDays = period.toInt(),
             initialUri = uri,
+            hasPassword = hasPassword,
             onDismiss = { showAutobackupDialog = false },
             onConfirm = { enabled, periodDays, uri, password ->
                 showAutobackupDialog = false
