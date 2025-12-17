@@ -3,14 +3,12 @@ package com.ray.authigel.ui.homescreen
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -65,7 +63,7 @@ fun AutoBackupDialog(
                     Column(Modifier.weight(1f)) {
                         Text("Enable auto backup", fontWeight = FontWeight.SemiBold)
                         Text(
-                            "Automatically export backups to the selected location.",
+                            "Automatically export encrypted backup to the chosen location.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -81,7 +79,7 @@ fun AutoBackupDialog(
                 ) {
                     Text("Export location", fontWeight = FontWeight.SemiBold)
                     Text(
-                        text = selectedUri?.toString() ?: "No location selected",
+                        text = selectedUri?.toString() ?: "No location chosen",
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 2
                     )
@@ -131,23 +129,29 @@ fun AutoBackupDialog(
                     }
                 }
                 if (enabled) {
-                    HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
                     Text("Encryption password", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        text = "IMPORTANT: Please make sure to save password safely, this is the only way to decrypt the auto-backup file.",
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Red),
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "IMPORTANT: Please make sure to save password safely, this is the only way to decrypt the auto-backup file.",
+                            modifier = Modifier.padding(8.dp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onError
+                        )
+                    }
+
                     if(hasPassword) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.errorContainer,
-                            tonalElevation = 1.dp,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "Existing password detected, saving new password will overwrite it.",
-                                modifier = Modifier.padding(12.dp),
+                                text = "Notice: Existing password detected, saving new password will overwrite it.",
+                                modifier = Modifier.padding(8.dp),
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -214,7 +218,9 @@ fun AutoBackupDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss
+            ) {
                 Text("Cancel")
             }
         }

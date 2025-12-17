@@ -1,12 +1,12 @@
 package com.ray.authigel.ui.homescreen
 
 import android.widget.Toast
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,7 +55,7 @@ fun LockedScreen(
                 onUnlockClick = {
                     authenticator.authenticate(
                         title = "Unlock AuthIgel",
-                        subtitle = "Authenticate to view your 2FA tokens",
+                        subtitle = "Authenticate to view your 2FA codes.",
                         onSuccess = { isUnlocked = true },
                         onError = { msg -> Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show() }
                     )
@@ -79,8 +79,8 @@ private fun UnLockScreen(onUnlockClick: () -> Unit) {
             Icon(
                 imageVector = Icons.Outlined.Lock,
                 contentDescription = "Locked",
-                modifier = Modifier.size(72.dp),
-                tint = Color.Black,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Button(onClick = onUnlockClick, colors = ButtonDefaults.buttonColors(
                 containerColor = HedgehogBrown,
