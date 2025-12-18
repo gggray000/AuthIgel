@@ -20,26 +20,28 @@ fun AutoBackupDialog(
     initialEnabled: Boolean,
     initialPeriodDays: Int,
     initialUri: Uri?,
-    hasPassword: Boolean,
+    hasExistingPassword: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (enabled: Boolean, periodDays: Int, uri: Uri?, password: CharArray?) -> Unit
 ) {
     var enabled by remember { mutableStateOf(initialEnabled) }
     var periodDays by remember { mutableStateOf(initialPeriodDays) }
     var selectedUri by remember { mutableStateOf(initialUri) }
-    var hasPassword by remember { mutableStateOf(hasPassword) }
+    var hasExistingPassword by remember { mutableStateOf(hasExistingPassword) }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     val periodOptions = listOf(1, 3, 7, 14, 30)
     var periodMenuExpanded by remember { mutableStateOf(false) }
-
     val treePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
             selectedUri = uri
         }
+    }
+    var isUpdatingPassword by remember {
+        mutableStateOf(!hasExistingPassword)
     }
 
     AlertDialog(
@@ -54,11 +56,12 @@ fun AutoBackupDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text("Enable auto backup", fontWeight = FontWeight.SemiBold)
@@ -128,8 +131,36 @@ fun AutoBackupDialog(
                         }
                     }
                 }
-                if (enabled) {
-                    Text("Encryption password", fontWeight = FontWeight.SemiBold)
+
+                if(enabled && hasExistingPassword && !isUpdatingPassword) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Notice: Existing password detected.",
+                            modifier = Modifier.padding(8.dp),
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
+                if(enabled && hasExistingPassword) {
+                        Button(
+                            onClick = { isUpdatingPassword = !isUpdatingPassword },
+                            enabled = enabled
+                        ) {
+                            if(!isUpdatingPassword){
+                                Text("Reset password")
+                            } else {
+                                Text("Cancel resetting password")
+                            }
+                        }
+                }
+
+                if (enabled && isUpdatingPassword) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.error,
@@ -142,48 +173,32 @@ fun AutoBackupDialog(
                             color = MaterialTheme.colorScheme.onError
                         )
                     }
-
-                    if(hasPassword) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.errorContainer,
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Password") },
+                            singleLine = true,
+                            visualTransformation =
+                                if (showPassword) VisualTransformation.None
+                                else PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = "Notice: Existing password detected, saving new password will overwrite it.",
-                                modifier = Modifier.padding(8.dp),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
+                        )
+
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it },
+                            label = { Text("Confirm password") },
+                            singleLine = true,
+                            isError = confirmPassword.isNotEmpty() && password != confirmPassword,
+                            visualTransformation =
+                                if (showPassword) VisualTransformation.None
+                                else PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        TextButton(onClick = { showPassword = !showPassword }) {
+                            Text(if (showPassword) "Hide password" else "Show password")
                         }
-                    }
 
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password") },
-                        singleLine = true,
-                        visualTransformation =
-                            if (showPassword) VisualTransformation.None
-                            else PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = confirmPassword,
-                        onValueChange = { confirmPassword = it },
-                        label = { Text("Confirm password") },
-                        singleLine = true,
-                        isError = confirmPassword.isNotEmpty() && password != confirmPassword,
-                        visualTransformation =
-                            if (showPassword) VisualTransformation.None
-                            else PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    TextButton(onClick = { showPassword = !showPassword }) {
-                        Text(if (showPassword) "Hide password" else "Show password")
-                    }
 
                     if (confirmPassword.isNotEmpty() && password != confirmPassword) {
                         Text(
@@ -196,7 +211,7 @@ fun AutoBackupDialog(
             }
         },
         confirmButton = {
-            val canConfirm = if(enabled){
+            val canConfirm = if((enabled && !hasExistingPassword )|| (enabled && isUpdatingPassword)) {
                 selectedUri != null && password != "" && confirmPassword != "" && confirmPassword == password
             } else {
                 true

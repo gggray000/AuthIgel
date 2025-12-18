@@ -1,7 +1,10 @@
 package com.ray.authigel.ui.homescreen
 
 import android.net.Uri
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -77,11 +80,11 @@ fun AddRecordDialog(
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                     val canBuild = issuer.isNotBlank() && holder.isNotBlank() && secret.isNotBlank()
-                    TextButton(
+                    Button(
                         enabled = canBuild,
                         onClick = {
                             error = null
-                            if (!canBuild) return@TextButton
+                            if (!canBuild) return@Button
                             runCatching {
                                 url = OtpSeedFactory.buildOtpAuthUrl(
                                     issuer = issuer.trim(),

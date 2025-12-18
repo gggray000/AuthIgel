@@ -66,7 +66,7 @@ fun HomeScreen() {
             }
         }
     }
-    val hasPassword by vm.hasPassword.collectAsState()
+    val hasExistingPassword by vm.hasPassword.collectAsState()
     var showAutobackupDialog by remember { mutableStateOf(false) }
     val importer = remember { CodeRecordImporter() }
     val importLauncher = rememberLauncherForActivityResult(
@@ -293,7 +293,7 @@ fun HomeScreen() {
             initialEnabled = enabled,
             initialPeriodDays = period.toInt(),
             initialUri = uri,
-            hasPassword = hasPassword,
+            hasExistingPassword = hasExistingPassword,
             onDismiss = { showAutobackupDialog = false },
             onConfirm = { enabled, periodDays, uri, password ->
                 showAutobackupDialog = false
