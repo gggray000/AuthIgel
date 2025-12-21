@@ -51,7 +51,7 @@ class CodeRecordImporter {
                 .setHolder(holder)
                 .setSecret(secret)
                 .setRawUrl(rawUri.toString())
-
+                .setAddedAt(System.currentTimeMillis())
             newRecords.add(newRecord.build())
         }
         return newRecords;

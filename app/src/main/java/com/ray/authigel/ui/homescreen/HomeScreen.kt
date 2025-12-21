@@ -35,7 +35,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.FileNotFoundException
 import java.io.InputStream
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -280,6 +282,7 @@ fun HomeScreen() {
                     .setHolder(holder)
                     .setSecret(secret)         // Base32 secret (unchanged)
                     .setRawUrl(url ?: "")
+                    .setAddedAt(System.currentTimeMillis())
                     .build()
                 vm.add(record)
                 showAddDialog = false
@@ -360,33 +363,50 @@ private fun CodeRecordCard(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
+        Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 8.dp)
+                    .fillMaxWidth()
+                    .padding(end = 48.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(record.issuer, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text(record.holder, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Normal)
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete")
-                    }
+                Column {
+                    Text(
+                        record.issuer,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        record.holder,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(formatOtp(code), style = MaterialTheme.typography.headlineLarge)
+                Text(
+                    formatOtp(code),
+                    style = MaterialTheme.typography.headlineLarge
+                )
             }
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                Icon(Icons.Filled.Delete, contentDescription = "Delete")
+            }
+            Text(
+                text = "Added at: " +
+                        DateTimeFormatter
+                            .ofPattern("yyyy-MM-dd HH:mm")
+                            .withZone(ZoneId.systemDefault())
+                            .format(Instant.ofEpochMilli(record.getAddedAt())),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Light,
+                color = Color.Gray,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
         }
     }
 }

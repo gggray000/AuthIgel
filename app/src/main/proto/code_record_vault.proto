@@ -9,7 +9,7 @@ message CodeRecord {
   string holder = 3;
   string secret = 4;
   string rawUrl = 5;
-
+  int64 added_at = 6;
 }
 
 message CodeRecordVault {
