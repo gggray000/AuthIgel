@@ -104,11 +104,17 @@ fun AutoBackupDialog(
                         expanded = periodMenuExpanded,
                         onExpandedChange = { periodMenuExpanded = !periodMenuExpanded }
                     ) {
+                        val fillMaxWidth = Modifier.fillMaxWidth()
                         OutlinedTextField(
                             value = "$periodDays day(s)",
                             onValueChange = {},
                             readOnly = true,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(
+                                    type = ExposedDropdownMenuAnchorType.PrimaryEditable,
+                                    enabled = enabled
+                                ),
                             enabled = enabled,
                             label = { Text("How often to backup") },
                             trailingIcon = {
