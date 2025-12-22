@@ -67,7 +67,8 @@ fun AutoBackupDialog(
                         Text("Enable auto backup", fontWeight = FontWeight.SemiBold)
                         Text(
                             "Automatically export encrypted backup to the chosen location.",
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(end = 2.dp)
                         )
                     }
                     Switch(

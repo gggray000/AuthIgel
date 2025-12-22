@@ -42,4 +42,13 @@ class CodeRecordVaultViewModel(app: Application) : AndroidViewModel(app) {
     fun clearEncryptedBackupPassword() = viewModelScope.launch {
         repo.clearEncryptedBackupPassword()
     }
+
+    suspend fun getEncryptedBackupPassword(): ByteArray? {
+        return repo.getEncryptedBackupPassword()
+    }
+
+    suspend fun getBackupPasswordPlaintext(): String? {
+        val encrypted = getEncryptedBackupPassword() ?: return null
+        return BackupPasswordKeystore.decrypt(encrypted).concatToString()
+    }
 }

@@ -304,6 +304,7 @@ fun HomeScreen() {
                     AutoBackupPreferences.save(context, enabled, periodDays, uri)
                     if (enabled && uri != null) {
                         if (password != null && password.isNotEmpty()) {
+                            vm.clearEncryptedBackupPassword()
                             val encrypted = BackupPasswordKeystore.encrypt(password)
                             vm.storeEncryptedBackupPassword(encrypted)
                             password.fill('\u0000')
@@ -315,9 +316,7 @@ fun HomeScreen() {
                         )
                     } else {
                         AutoBackupScheduler.cancelPeriodicBackup(context)
-                        snackbarHostState.showSnackbar("Auto backup disabled, backup password cleared.")
-                        vm.clearEncryptedBackupPassword()
-
+                        snackbarHostState.showSnackbar("Auto backup disabled.")
                     }
                 }
             }
@@ -335,7 +334,10 @@ fun HomeScreen() {
                 pendingRestorePassword?.fill('\u0000')
                 pendingRestorePassword = password
                 importEncryptedLauncher.launch(arrayOf("*/*"))
-            }
+            },
+            hasExistingPassword = hasExistingPassword,
+            vm = vm,
+            scope = scope
         )
     }
 }
