@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
@@ -14,7 +15,7 @@ private val DarkColorScheme = darkColorScheme(
 
 private val LightColorScheme = lightColorScheme(
     primary = Purple40,
-    secondary = PurpleGrey40,
+    secondary = PurpleGrey80,
     tertiary = Pink40
 
     /* Other default colors to override
@@ -51,7 +52,9 @@ fun AuthIgelTheme(
     MaterialTheme(
         colorScheme = baseScheme.copy(
             primary = HedgehogBrown,
-            secondary = HedgehogBrown
+            onPrimary = Color.White,
+            secondary = HedgehogBrown,
+            onSecondary = Color.White
         ),
         typography = Typography,
         content = content

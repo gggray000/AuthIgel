@@ -1,10 +1,14 @@
 package com.ray.authigel.ui.homescreen
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -19,27 +23,60 @@ import kotlinx.coroutines.launch
 @Composable
 fun RestoreBackupDialog(
     title: String,
-    confirmText: String,
     onDismiss: () -> Unit,
-    onConfirm: (CharArray) -> Unit,
+    hasLastBackupUri: Boolean,
+    onUseLastBackup: () -> Unit,
+    onChooseAnotherPosition: () -> Unit,
+    selectedUri: Uri?,
+    onConfirm: (uri: Uri, password: CharArray) -> Unit,
     hasExistingPassword: Boolean,
     vm: CodeRecordVaultViewModel,
-    scope: CoroutineScope,
+    scope: CoroutineScope
 ) {
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(title, fontWeight = FontWeight.Bold)
-        },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
 
         text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+                if (hasLastBackupUri) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Existing backup location detected.",
+                            modifier = Modifier.padding(8.dp),
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Button(
+                        onClick = onUseLastBackup,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Use latest backup file")
+                    }
+                }
+
+                OutlinedButton(
+                    onClick = onChooseAnotherPosition,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Choose another backup file")
+                }
+
+                if (selectedUri != null) {
+                    Text(
+                        text = "Selected file:\n$selectedUri",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
 
                 if (hasExistingPassword) {
                     Surface(
@@ -54,15 +91,12 @@ fun RestoreBackupDialog(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-
                     Button(
                         onClick = {
                             scope.launch {
-                                val existingPassword = vm.getBackupPasswordPlaintext()
-                                password = existingPassword ?: ""
+                                password = vm.getBackupPasswordPlaintext() ?: ""
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        }
                     ) {
                         Text("Apply existing password")
                     }
@@ -77,29 +111,39 @@ fun RestoreBackupDialog(
                         if (showPassword) VisualTransformation.None
                         else PasswordVisualTransformation(),
                     trailingIcon = {
-                        TextButton(onClick = { showPassword = !showPassword }) {
-                            Text(if (showPassword) "Hide" else "Show")
+                        IconButton(
+                            onClick = { showPassword = !showPassword }
+                        ) {
+                            Icon(
+                                imageVector = if (showPassword)
+                                    Icons.Outlined.Visibility
+                                else
+                                    Icons.Outlined.VisibilityOff,
+                                contentDescription =
+                                    if (showPassword) "Hide password"
+                                    else "Show password"
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
+
         confirmButton = {
             TextButton(
-                enabled = password.isNotEmpty(),
+                enabled = selectedUri != null && password.isNotEmpty(),
                 onClick = {
-                    onConfirm(password.toCharArray())
+                    onConfirm(selectedUri!!, password.toCharArray())
                     password = ""
                 }
             ) {
-                Text(confirmText)
+                Text("Restore")
             }
         },
+
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }

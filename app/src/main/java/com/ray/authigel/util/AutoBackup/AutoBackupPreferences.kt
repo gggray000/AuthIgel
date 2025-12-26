@@ -17,6 +17,7 @@ object AutoBackupPreferences {
     val KEY_ENABLED = booleanPreferencesKey("enabled")
     val KEY_PERIOD = intPreferencesKey("period_days")
     val KEY_URI = stringPreferencesKey("folder_uri")
+    val KEY_LAST_BACKUP_FILE_URI = stringPreferencesKey("last_backup_file_uri")
 
     fun load(context: Context): Triple<Boolean, Int, Uri?> = runBlocking {
         val prefs = context.autoBackupDataStore.data.first()
@@ -36,6 +37,26 @@ object AutoBackupPreferences {
             } else {
                 prefs.remove(KEY_URI)
             }
+        }
+    }
+
+    suspend fun saveLastBackupFileUri(
+        context: Context,
+        fileUri: Uri
+    ) {
+        context.autoBackupDataStore.edit { prefs ->
+            prefs[KEY_LAST_BACKUP_FILE_URI] = fileUri.toString()
+        }
+    }
+
+    fun loadLastBackupFileUri(context: Context): Uri? = runBlocking {
+        val prefs = context.autoBackupDataStore.data.first()
+        prefs[KEY_LAST_BACKUP_FILE_URI]?.let(Uri::parse)
+    }
+
+    suspend fun clearLastBackupFileUri(context: Context) {
+        context.autoBackupDataStore.edit { prefs ->
+            prefs.remove(KEY_LAST_BACKUP_FILE_URI)
         }
     }
 }

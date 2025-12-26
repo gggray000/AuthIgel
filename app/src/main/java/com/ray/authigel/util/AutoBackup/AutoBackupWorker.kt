@@ -48,7 +48,15 @@ CoroutineWorker(appContext, workerParams) {
                 ) ?: return Result.failure()
 
                 val ok = exporter.writeToUri(context, backupUri, encryptedBackupFileBytes)
-                if (ok) Result.success() else Result.failure()
+                if (ok) {
+                    AutoBackupPreferences.saveLastBackupFileUri(
+                        context,
+                        backupUri
+                    )
+                    Result.success()
+                } else {
+                    Result.failure()
+                }
             } finally {
                 password.fill('\u0000')
             }

@@ -5,6 +5,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -188,7 +191,24 @@ fun AutoBackupDialog(
                             visualTransformation =
                                 if (showPassword) VisualTransformation.None
                                 else PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = {
+                                IconButton(onClick = { showPassword = !showPassword }) {
+                                    IconButton(
+                                        onClick = { showPassword = !showPassword }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (showPassword)
+                                                Icons.Outlined.Visibility
+                                            else
+                                                Icons.Outlined.VisibilityOff,
+                                            contentDescription =
+                                                if (showPassword) "Hide password"
+                                                else "Show password"
+                                        )
+                                    }
+                                }
+                            }
                         )
 
                         OutlinedTextField(
@@ -202,9 +222,6 @@ fun AutoBackupDialog(
                                 else PasswordVisualTransformation(),
                             modifier = Modifier.fillMaxWidth()
                         )
-                        TextButton(onClick = { showPassword = !showPassword }) {
-                            Text(if (showPassword) "Hide password" else "Show password")
-                        }
 
 
                     if (confirmPassword.isNotEmpty() && password != confirmPassword) {

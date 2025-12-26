@@ -1,6 +1,7 @@
 package com.ray.authigel.ui.homescreen
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -106,53 +107,13 @@ fun HomeScreen() {
         }
     )
     var showRestoreDialog by remember { mutableStateOf(false) }
-    var pendingRestorePassword by remember { mutableStateOf<CharArray?>(null) }
-
-    val importEncryptedLauncher = rememberLauncherForActivityResult(
+    val lastBackupFileUri = AutoBackupPreferences.loadLastBackupFileUri(context)
+    var selectedRestoreUri by remember { mutableStateOf<Uri?>(null) }
+    val restoreFilePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
-        if (uri == null) {
-            pendingRestorePassword?.fill('\u0000')
-            pendingRestorePassword = null
-            return@rememberLauncherForActivityResult
-        }
-
-        val pw = pendingRestorePassword
-        if (pw == null) {
-            scope.launch { snackbarHostState.showSnackbar("Missing password. Please try again.") }
-            return@rememberLauncherForActivityResult
-        }
-
-        scope.launch {
-            try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                if (inputStream == null) {
-                    snackbarHostState.showSnackbar("Cannot open file.")
-                    return@launch
-                }
-
-                inputStream.use { inputStream ->
-                    when (val dec = importer.decryptEncryptedBackup(inputStream, pw)) {
-                        is CodeRecordImporter.DecryptResult.Success -> {
-                            val newRecords = importer.convertToRecords(dec.lines)
-                            newRecords.forEach { vm.add(it) }
-                            snackbarHostState.showSnackbar("Imported ${newRecords.size} record(s).")
-                        }
-                        is CodeRecordImporter.DecryptResult.WrongPassword -> {
-                            snackbarHostState.showSnackbar("Wrong password.")
-                        }
-                        is CodeRecordImporter.DecryptResult.InvalidFormat -> {
-                            snackbarHostState.showSnackbar("Invalid backup: ${dec.reason}")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                snackbarHostState.showSnackbar("Import failed.")
-            } finally {
-                pendingRestorePassword?.fill('\u0000')
-                pendingRestorePassword = null
-            }
+        if (uri != null) {
+            selectedRestoreUri = uri
         }
     }
 
@@ -304,7 +265,6 @@ fun HomeScreen() {
                     AutoBackupPreferences.save(context, enabled, periodDays, uri)
                     if (enabled && uri != null) {
                         if (password != null && password.isNotEmpty()) {
-                            vm.clearEncryptedBackupPassword()
                             val encrypted = BackupPasswordKeystore.encrypt(password)
                             vm.storeEncryptedBackupPassword(encrypted)
                             password.fill('\u0000')
@@ -325,15 +285,49 @@ fun HomeScreen() {
     if (showRestoreDialog) {
         RestoreBackupDialog(
             title = "Restore Encrypted Backup",
-            confirmText = "Next",
             onDismiss = {
                 showRestoreDialog = false
+                selectedRestoreUri = null
             },
-            onConfirm = { password ->
+            hasLastBackupUri = lastBackupFileUri != null,
+            onUseLastBackup = {
+                selectedRestoreUri = lastBackupFileUri
+            },
+            onChooseAnotherPosition = {
+                restoreFilePicker.launch(arrayOf("*/*"))
+            },
+            selectedUri = selectedRestoreUri,
+            onConfirm = { uri, password ->
                 showRestoreDialog = false
-                pendingRestorePassword?.fill('\u0000')
-                pendingRestorePassword = password
-                importEncryptedLauncher.launch(arrayOf("*/*"))
+
+                scope.launch {
+                    try {
+                        context.contentResolver.openInputStream(uri)?.use {
+                            when (val dec =
+                                importer.decryptEncryptedBackup(it, password)) {
+
+                                is CodeRecordImporter.DecryptResult.Success -> {
+                                    dec.lines
+                                        .let(importer::convertToRecords)
+                                        .forEach(vm::add)
+
+                                    snackbarHostState.showSnackbar("Backup restored successfully")
+                                }
+                                is CodeRecordImporter.DecryptResult.WrongPassword ->
+                                    snackbarHostState.showSnackbar("Wrong password")
+
+                                is CodeRecordImporter.DecryptResult.InvalidFormat ->
+                                    snackbarHostState.showSnackbar(
+                                        "Invalid backup: ${dec.reason}"
+                                    )
+                            }
+                        }
+                    } catch (_: Exception) {
+                        snackbarHostState.showSnackbar("Restore failed")
+                    } finally {
+                        password.fill('\u0000')
+                    }
+                }
             },
             hasExistingPassword = hasExistingPassword,
             vm = vm,
