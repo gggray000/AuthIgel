@@ -1,4 +1,3 @@
-// com/ray/authigel/data/CodeVaultViewModel.kt
 package com.ray.authigel.data
 
 import android.app.Application

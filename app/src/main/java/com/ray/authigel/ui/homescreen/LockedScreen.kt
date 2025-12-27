@@ -27,7 +27,7 @@ fun LockedScreen(
     var isUnlocked by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     val authenticator = remember(activity) { BiometricAuthenticator(activity) }
-    var lastBackgroundTimestamp by rememberSaveable { mutableStateOf(0L) }
+    var lastBackgroundTimestamp by rememberSaveable { mutableLongStateOf(0L) }
 
     LaunchedEffect(Unit) {
         isUnlocked = false

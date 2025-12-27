@@ -1,8 +1,9 @@
-package com.ray.authigel.util.AutoBackup
+package com.ray.authigel.util.autoBackup
 
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -24,7 +25,7 @@ object AutoBackupPreferences {
         val enabled = prefs[KEY_ENABLED] ?: false
         val period = prefs[KEY_PERIOD] ?: 7
         val uriString = prefs[KEY_URI]
-        val uri = uriString?.let { Uri.parse(it) }
+        val uri = uriString?.toUri()
         Triple(enabled, period, uri)
     }
 

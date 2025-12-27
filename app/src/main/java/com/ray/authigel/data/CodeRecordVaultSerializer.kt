@@ -2,11 +2,13 @@ package com.ray.authigel.data
 
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.Serializer
+import com.google.crypto.tink.Aead
 import com.google.protobuf.InvalidProtocolBufferException
 import com.ray.authigel.vault.CodeRecordVault
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.io.OutputStream
-import com.google.crypto.tink.Aead
 
 class CodeRecordVaultSerializer(private val aead: Aead) : Serializer<CodeRecordVault> {
     override val defaultValue: CodeRecordVault = CodeRecordVault.getDefaultInstance()
@@ -40,6 +42,8 @@ class CodeRecordVaultSerializer(private val aead: Aead) : Serializer<CodeRecordV
     override suspend fun writeTo(t: CodeRecordVault, output: OutputStream) {
         val clear = t.toByteArray()
         val ciphertext = aead.encrypt(clear, aad)
-        output.write(ciphertext)
+        withContext(Dispatchers.IO) {
+            output.write(ciphertext)
+        }
     }
 }

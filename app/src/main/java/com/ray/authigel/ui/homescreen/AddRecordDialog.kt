@@ -1,6 +1,5 @@
 package com.ray.authigel.ui.homescreen
 
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.ray.authigel.util.OtpSeedFactory
 
 @Composable
@@ -26,7 +26,7 @@ fun AddRecordDialog(
     fun validateUrl(u: String) {
         error = null
         runCatching {
-            val parsed = Uri.parse(u.trim())
+            val parsed = u.trim().toUri()
             if (parsed.scheme != "otpauth") throw IllegalArgumentException()
             val labelRaw = parsed.path?.removePrefix("/")?.trim().orEmpty()
             val labelParts = labelRaw.split(":", limit = 2)
@@ -45,7 +45,7 @@ fun AddRecordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add token") },
+        title = { Text("Add record") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -68,16 +68,25 @@ fun AddRecordDialog(
                     label = { Text("Secret (Base32)*") },
                     singleLine = true,
                     readOnly = true,
-                    supportingText = { Text("Tap Generate to create a new random secret") },
-                    trailingIcon = {
-                        TextButton(onClick = {
-                            secret = OtpSeedFactory.generateRandomSecret()
-                        }) {
-                            Text("Generate Secret")
-                        }
-                    },
                     modifier = Modifier.fillMaxWidth()
                 )
+                Button(onClick = {
+                    secret = OtpSeedFactory.generateRandomSecret()
+                }) {
+                    Text("Generate Random Secret")
+                }
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { value ->
+                        url = value
+                        validateUrl(value) },
+                    label = { Text("OTPAuth URL (generated or pasted)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isUrlValid,
+                    supportingText = {if(!isUrlValid) { Text("Invalid OTPAuth URL.") }}
+                )
+
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                     val canBuild = issuer.isNotBlank() && holder.isNotBlank() && secret.isNotBlank()
                     Button(
@@ -95,19 +104,9 @@ fun AddRecordDialog(
                                 error = ex.message ?: "Failed to build URL"
                             }
                         }
-                    ) { Text("Generate URL") }
+                    ) { Text("Generate OTPAuth URL") }
                 }
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { value ->
-                        url = value
-                        validateUrl(value) },
-                    label = { Text("OTPAuth URL (generated or pasted)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = !isUrlValid,
-                    supportingText = {if(!isUrlValid) { Text("Invalid OTPAuth URL.") }}
-                )
+
                 if (error != null) {
                     Text(
                         text = error!!,

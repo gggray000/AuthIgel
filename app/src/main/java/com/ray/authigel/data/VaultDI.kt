@@ -3,6 +3,7 @@ package com.ray.authigel.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import com.google.crypto.tink.Aead
+import com.google.crypto.tink.RegistryConfiguration
 import com.google.crypto.tink.config.TinkConfig
 import com.google.crypto.tink.integration.android.AndroidKeysetManager
 import com.ray.authigel.vault.CodeRecordVault
@@ -30,10 +31,12 @@ object VaultDI {
                 .withMasterKeyUri("android-keystore://codevault_master_key")
                 .build()
 
-            aead = keysetMgr.keysetHandle.getPrimitive(Aead::class.java)
+            aead = keysetMgr.keysetHandle.getPrimitive(
+                RegistryConfiguration.get(),
+                Aead::class.java
+            )
             dataStore = CodeRecordVaultDataStore.create(appContext, aead)
             repo = CodeRecordVaultRepository(dataStore)
-
             initialized = true
         }
     }

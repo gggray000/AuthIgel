@@ -25,11 +25,11 @@ import com.ray.authigel.data.BackupPasswordKeystore
 import com.ray.authigel.data.CodeRecordVaultViewModel
 import com.ray.authigel.ui.theme.AuthIgelTheme
 import com.ray.authigel.ui.theme.HedgehogBrown
-import com.ray.authigel.util.AutoBackup.AutoBackupPreferences
-import com.ray.authigel.util.AutoBackup.AutoBackupScheduler
 import com.ray.authigel.util.CodeRecordExporter
 import com.ray.authigel.util.CodeRecordImporter
 import com.ray.authigel.util.OtpGenerator
+import com.ray.authigel.util.autoBackup.AutoBackupPreferences
+import com.ray.authigel.util.autoBackup.AutoBackupScheduler
 import com.ray.authigel.util.rememberQrCodeScanner
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
@@ -185,7 +185,7 @@ fun HomeScreen() {
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Manually add a record") },
+                        text = { Text("Add record manually") },
                         onClick = {
                             fabMenuExpanded = false
                             showAddDialog = true
@@ -199,7 +199,7 @@ fun HomeScreen() {
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Restore from encrypted backup") },
+                        text = { Text("Restore encrypted backup") },
                         onClick = {
                             fabMenuExpanded = false
                             showRestoreDialog = true
@@ -255,7 +255,7 @@ fun HomeScreen() {
         var (enabled, period, uri) = AutoBackupPreferences.load(context)
         AutoBackupDialog(
             initialEnabled = enabled,
-            initialPeriodDays = period.toInt(),
+            initialPeriodDays = period,
             initialUri = uri,
             hasExistingPassword = hasExistingPassword,
             onDismiss = { showAutobackupDialog = false },
@@ -299,7 +299,6 @@ fun HomeScreen() {
             selectedUri = selectedRestoreUri,
             onConfirm = { uri, password ->
                 showRestoreDialog = false
-
                 scope.launch {
                     try {
                         context.contentResolver.openInputStream(uri)?.use {

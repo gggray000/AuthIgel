@@ -28,7 +28,7 @@ fun AutoBackupDialog(
     onConfirm: (enabled: Boolean, periodDays: Int, uri: Uri?, password: CharArray?) -> Unit
 ) {
     var enabled by remember { mutableStateOf(initialEnabled) }
-    var periodDays by remember { mutableStateOf(initialPeriodDays) }
+    var periodDays by remember { mutableIntStateOf(initialPeriodDays) }
     var selectedUri by remember { mutableStateOf(initialUri) }
     var hasExistingPassword by remember { mutableStateOf(hasExistingPassword) }
     var password by remember { mutableStateOf("") }

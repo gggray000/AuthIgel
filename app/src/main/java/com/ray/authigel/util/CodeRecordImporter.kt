@@ -1,6 +1,6 @@
 package com.ray.authigel.util
 
-import android.net.Uri
+import androidx.core.net.toUri
 import com.ray.authigel.vault.CodeRecord
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
@@ -30,7 +30,7 @@ class CodeRecordImporter {
     fun convertToRecords(otpUris: List<String>): List<CodeRecord> {
         val newRecords = mutableListOf<CodeRecord>()
         otpUris.forEach { uri ->
-            val rawUri = Uri.parse(uri)
+            val rawUri = uri.toUri()
             val rawLabel = rawUri.lastPathSegment ?: ""
             val label = URLDecoder.decode(rawLabel, "utf-8")
             val (labelIssuer, labelHolder) = if (":" in label) {
@@ -41,14 +41,12 @@ class CodeRecordImporter {
             }
             val queryIssuer = rawUri.getQueryParameter("issuer")
             val issuer = queryIssuer ?: labelIssuer
-
-            val holder = labelHolder
             val secret = rawUri.getQueryParameter("secret") ?: ""
 
             val newRecord = com.ray.authigel.vault.CodeRecord.newBuilder()
                 .setId(UUID.randomUUID().toString())
                 .setIssuer(issuer)
-                .setHolder(holder)
+                .setHolder(labelHolder)
                 .setSecret(secret)
                 .setRawUrl(rawUri.toString())
                 .setAddedAt(System.currentTimeMillis())
@@ -88,9 +86,9 @@ class CodeRecordImporter {
         val salt = ByteArray(16)
         buf.get(salt)
 
-        val iters = buf.int
-        if (iters < 10_000) {
-            return DecryptResult.InvalidFormat("Invalid PBKDF2 iterations: $iters")
+        val iterations = buf.int
+        if (iterations < 10_000) {
+            return DecryptResult.InvalidFormat("Invalid PBKDF2 iterations: $iterations")
         }
 
         val iv = ByteArray(12)
@@ -100,7 +98,7 @@ class CodeRecordImporter {
         buf.get(ciphertext)
 
         return try {
-            val key = deriveAesKey(password, salt, iters)
+            val key = deriveAesKey(password, salt, iterations)
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
 
@@ -123,9 +121,9 @@ class CodeRecordImporter {
     private fun deriveAesKey(
         password: CharArray,
         salt: ByteArray,
-        iters: Int
+        iterations: Int
     ): SecretKeySpec {
-        val spec = PBEKeySpec(password, salt, iters, 256)
+        val spec = PBEKeySpec(password, salt, iterations, 256)
         val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val keyBytes = factory.generateSecret(spec).encoded
         return SecretKeySpec(keyBytes, "AES")
