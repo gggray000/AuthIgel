@@ -2,7 +2,6 @@ package com.ray.authigel.ui.homescreen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,7 +17,7 @@ fun AddRecordDialog(
 ) {
     var issuer by remember { mutableStateOf("") }
     var holder by remember { mutableStateOf("") }
-    var secret by remember { mutableStateOf(OtpSeedFactory.generateRandomSecret()) }
+    var secret by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var isUrlValid by remember { mutableStateOf(true) }
@@ -64,11 +63,11 @@ fun AddRecordDialog(
                 )
                 OutlinedTextField(
                     value = secret,
-                    onValueChange = { },
+                    onValueChange = { secret = it },
                     label = { Text("Secret (Base32)*") },
                     singleLine = true,
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    supportingText = { Text("Paste secret from service provider or generate random secret.")}
                 )
                 Button(onClick = {
                     secret = OtpSeedFactory.generateRandomSecret()
@@ -80,32 +79,36 @@ fun AddRecordDialog(
                     onValueChange = { value ->
                         url = value
                         validateUrl(value) },
-                    label = { Text("OTPAuth URL (generated or pasted)") },
+                    label = { Text("OTPAuth URL*") },
+                    placeholder = {  },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    isError = !isUrlValid,
-                    supportingText = {if(!isUrlValid) { Text("Invalid OTPAuth URL.") }}
+                    isError = !isUrlValid && url != "",
+                    supportingText = {if(!isUrlValid && url != "") {
+                        Text("Invalid OTPAuth URL.")
+                    } else {
+                        Text("Paste URL from service provider or generate URL based on information above.")
+                    } }
                 )
 
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                    val canBuild = issuer.isNotBlank() && holder.isNotBlank() && secret.isNotBlank()
-                    Button(
-                        enabled = canBuild,
-                        onClick = {
-                            error = null
-                            if (!canBuild) return@Button
-                            runCatching {
-                                url = OtpSeedFactory.buildOtpAuthUrl(
-                                    issuer = issuer.trim(),
-                                    holder = holder.trim(),
-                                    secretBase32 = secret.trim().uppercase()
-                                )
-                            }.onFailure { ex ->
-                                error = ex.message ?: "Failed to build URL"
-                            }
+                val canBuild = issuer.isNotBlank() && holder.isNotBlank() && secret.isNotBlank()
+                Button(
+                    enabled = canBuild,
+                    onClick = {
+                        error = null
+                        if (!canBuild) return@Button
+                        runCatching {
+                            url = OtpSeedFactory.buildOtpAuthUrl(
+                                issuer = issuer.trim(),
+                                holder = holder.trim(),
+                                secretBase32 = secret.trim().uppercase()
+                            )
+                        }.onFailure { ex ->
+                            error = ex.message ?: "Failed to build URL"
                         }
-                    ) { Text("Generate OTPAuth URL") }
-                }
+                    }
+                ) { Text("Generate OTPAuth URL") }
+
 
                 if (error != null) {
                     Text(
