@@ -1,4 +1,4 @@
-package com.ray.authigel.util.autoBackup
+package com.ray.authigel.util.encrypted_backup
 
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer

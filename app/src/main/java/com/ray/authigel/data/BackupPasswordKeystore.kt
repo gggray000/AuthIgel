@@ -65,4 +65,9 @@ object BackupPasswordKeystore {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         keyStore.deleteEntry(KEY_ALIAS)
     }
+
+    fun hasPassword(): Boolean {
+        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+        return keyStore.containsAlias(KEY_ALIAS)
+    }
 }

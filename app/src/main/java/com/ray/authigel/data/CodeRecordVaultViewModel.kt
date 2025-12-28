@@ -19,10 +19,10 @@ class CodeRecordVaultViewModel(app: Application) : AndroidViewModel(app) {
             emptyList()
         )
 
-    val hasPassword = repo.hasEncryptedBackupPassword
-        .stateIn(
+    val hasPassword: StateFlow<Boolean> =
+        repo.hasBackupPasswordFlow.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
+            started = SharingStarted.Eagerly,
             initialValue = false
         )
 

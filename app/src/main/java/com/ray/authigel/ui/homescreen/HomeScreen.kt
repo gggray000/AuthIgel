@@ -28,8 +28,9 @@ import com.ray.authigel.ui.theme.HedgehogBrown
 import com.ray.authigel.util.CodeRecordExporter
 import com.ray.authigel.util.CodeRecordImporter
 import com.ray.authigel.util.OtpGenerator
-import com.ray.authigel.util.autoBackup.AutoBackupPreferences
-import com.ray.authigel.util.autoBackup.AutoBackupScheduler
+import com.ray.authigel.util.encrypted_backup.AutoBackupScheduler
+import com.ray.authigel.util.encrypted_backup.EncryptedBackupFrequency
+import com.ray.authigel.util.encrypted_backup.EncryptedBackupPreferences
 import com.ray.authigel.util.rememberQrCodeScanner
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
@@ -59,7 +60,7 @@ fun HomeScreen() {
         contract = ActivityResultContracts.CreateDocument("text/plain")
     ) { uri ->
         if (uri != null) {
-            var result = exporter.writeToUri(context, uri, backupBytes)
+            val result = exporter.writeToUri(context, uri, backupBytes)
             scope.launch {
                 if (result) {
                     snackbarHostState.showSnackbar("Successfully wrote ${records.size} record(s) to $uri")
@@ -70,7 +71,7 @@ fun HomeScreen() {
         }
     }
     val hasExistingPassword by vm.hasPassword.collectAsState()
-    var showAutobackupDialog by remember { mutableStateOf(false) }
+    var showEncryptedBackupDialog by remember { mutableStateOf(false) }
     val importer = remember { CodeRecordImporter() }
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -107,7 +108,7 @@ fun HomeScreen() {
         }
     )
     var showRestoreDialog by remember { mutableStateOf(false) }
-    val lastBackupFileUri = AutoBackupPreferences.loadLastBackupFileUri(context)
+    val lastBackupFileUri = EncryptedBackupPreferences.loadLastBackupFileUri(context)
     var selectedRestoreUri by remember { mutableStateOf<Uri?>(null) }
     val restoreFilePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -147,10 +148,10 @@ fun HomeScreen() {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Auto-Backup settings") },
+                                text = { Text("Encrypted Backup settings") },
                                 onClick = {
                                     topMenuExpanded = false
-                                    showAutobackupDialog = true
+                                    showEncryptedBackupDialog = true
                                 }
                             )
                         }
@@ -251,32 +252,45 @@ fun HomeScreen() {
             }
         )
     }
-    if (showAutobackupDialog) {
-        var (enabled, period, uri) = AutoBackupPreferences.load(context)
-        AutoBackupDialog(
-            initialEnabled = enabled,
-            initialPeriodDays = period,
-            initialUri = uri,
+    if (showEncryptedBackupDialog) {
+        val (backupFrequency, backupFolderUri) = EncryptedBackupPreferences.load(context)
+        EncryptedBackupDialog(
+            encryptedBackupFrequency = backupFrequency,
+            initialUri = backupFolderUri,
             hasExistingPassword = hasExistingPassword,
-            onDismiss = { showAutobackupDialog = false },
-            onConfirm = { enabled, periodDays, uri, password ->
-                showAutobackupDialog = false
+            onDismiss = { showEncryptedBackupDialog = false },
+            onConfirm = { newOptions, uri, password ->
+                showEncryptedBackupDialog = false
                 scope.launch {
-                    AutoBackupPreferences.save(context, enabled, periodDays, uri)
-                    if (enabled && uri != null) {
+                    EncryptedBackupPreferences.save(context, newOptions, uri)
+                    if (backupFrequency != EncryptedBackupFrequency.Never && uri != null) {
                         if (password != null && password.isNotEmpty()) {
-                            val encrypted = BackupPasswordKeystore.encrypt(password)
+                            val passwordCopy = password.copyOf()
+                            val encrypted = BackupPasswordKeystore.encrypt(passwordCopy)
                             vm.storeEncryptedBackupPassword(encrypted)
                             password.fill('\u0000')
                         }
-                        AutoBackupScheduler.runImmediateBackup(context)
-                        AutoBackupScheduler.schedulePeriodicBackup(context, periodDays)
-                        snackbarHostState.showSnackbar(
-                            "Auto backup enabled (every $periodDays day(s)). Backup Location: $uri"
-                        )
-                    } else {
-                        AutoBackupScheduler.cancelPeriodicBackup(context)
-                        snackbarHostState.showSnackbar("Auto backup disabled.")
+                        when (newOptions) {
+                            EncryptedBackupFrequency.Never -> {
+                                AutoBackupScheduler.cancelPeriodicBackup(context)
+                                snackbarHostState.showSnackbar("Encrypted backup disabled.")
+                            }
+
+                            EncryptedBackupFrequency.Once -> {
+                                AutoBackupScheduler.cancelPeriodicBackup(context)
+                                AutoBackupScheduler.runImmediateBackup(context)
+                                snackbarHostState.showSnackbar("Backup saved.")
+                            }
+
+                            is EncryptedBackupFrequency.Periodic -> {
+                                AutoBackupScheduler.runImmediateBackup(context)
+                                AutoBackupScheduler.schedulePeriodicBackup(
+                                    context = context,
+                                    periodDays = newOptions.days
+                                )
+                                snackbarHostState.showSnackbar("Auto backup enabled (every ${newOptions.days} day(s)).")
+                            }
+                        }
                     }
                 }
             }
@@ -284,7 +298,6 @@ fun HomeScreen() {
     }
     if (showRestoreDialog) {
         RestoreBackupDialog(
-            title = "Restore Encrypted Backup",
             onDismiss = {
                 showRestoreDialog = false
                 selectedRestoreUri = null
@@ -299,6 +312,7 @@ fun HomeScreen() {
             selectedUri = selectedRestoreUri,
             onConfirm = { uri, password ->
                 showRestoreDialog = false
+                val passwordCopy = password.copyOf()
                 scope.launch {
                     try {
                         context.contentResolver.openInputStream(uri)?.use {
@@ -306,6 +320,10 @@ fun HomeScreen() {
                                 importer.decryptEncryptedBackup(it, password)) {
 
                                 is CodeRecordImporter.DecryptResult.Success -> {
+
+                                    val encrypted = BackupPasswordKeystore.encrypt(passwordCopy)
+                                    vm.storeEncryptedBackupPassword(encrypted)
+
                                     dec.lines
                                         .let(importer::convertToRecords)
                                         .forEach(vm::add)
@@ -324,7 +342,7 @@ fun HomeScreen() {
                     } catch (_: Exception) {
                         snackbarHostState.showSnackbar("Restore failed")
                     } finally {
-                        password.fill('\u0000')
+                        passwordCopy.fill('\u0000')
                     }
                 }
             },

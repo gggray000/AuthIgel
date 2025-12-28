@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun RestoreBackupDialog(
-    title: String,
     onDismiss: () -> Unit,
     hasLastBackupUri: Boolean,
     onUseLastBackup: () -> Unit,
@@ -38,7 +37,7 @@ fun RestoreBackupDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontWeight = FontWeight.Bold) },
+        title = { Text("Restore backup", fontWeight = FontWeight.Bold) },
 
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

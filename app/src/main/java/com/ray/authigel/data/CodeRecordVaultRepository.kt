@@ -11,7 +11,7 @@ class CodeRecordVaultRepository(private val dataStore: DataStore<CodeRecordVault
     val records: Flow<List<CodeRecord>> =
         dataStore.data.map { it.tokensList }
 
-    val hasEncryptedBackupPassword: Flow<Boolean> =
+    val hasBackupPasswordFlow: Flow<Boolean> =
         dataStore.data.map { vault ->
             !vault.encryptedBackupPassword.isEmpty
         }
@@ -25,12 +25,20 @@ class CodeRecordVaultRepository(private val dataStore: DataStore<CodeRecordVault
     suspend fun removeById(id: String) {
         dataStore.updateData { current ->
             val filtered = current.tokensList.filterNot { it.id == id }
-            CodeRecordVault.newBuilder().addAllTokens(filtered).build()
+            current.toBuilder()
+                .clearTokens()
+                .addAllTokens(filtered)
+                .build()
         }
     }
 
     suspend fun replaceAll(records: List<CodeRecord>) {
-        dataStore.updateData { CodeRecordVault.newBuilder().addAllTokens(records).build() }
+        dataStore.updateData { current ->
+            current.toBuilder()
+                .clearTokens()
+                .addAllTokens(records)
+                .build()
+        }
     }
 
     suspend fun getAll(): List<CodeRecord> {

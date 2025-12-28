@@ -1,4 +1,4 @@
-package com.ray.authigel.util.autoBackup
+package com.ray.authigel.util.encrypted_backup
 
 import android.content.Context
 import android.provider.DocumentsContract
@@ -15,8 +15,9 @@ CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
         val context = applicationContext
         val exporter = CodeRecordExporter()
-        val (enabled, _, folderUri) = AutoBackupPreferences.load(context)
-        if (!enabled) {
+        val (backupOptions, folderUri) =
+            EncryptedBackupPreferences.load(context)
+        if (backupOptions == EncryptedBackupFrequency.Never) {
             return Result.success()
         }
         if (folderUri == null) {
@@ -49,7 +50,7 @@ CoroutineWorker(appContext, workerParams) {
 
                 val ok = exporter.writeToUri(context, backupUri, encryptedBackupFileBytes)
                 if (ok) {
-                    AutoBackupPreferences.saveLastBackupFileUri(
+                    EncryptedBackupPreferences.saveLastBackupFileUri(
                         context,
                         backupUri
                     )
