@@ -68,4 +68,17 @@ class CodeRecordVaultRepository(private val dataStore: DataStore<CodeRecordVault
                 .build()
         }
     }
+
+    suspend fun move(from: Int, to: Int) {
+        dataStore.updateData { current ->
+            val list = current.tokensList.toMutableList()
+            val item = list.removeAt(from)
+            list.add(to, item)
+
+            current.toBuilder()
+                .clearTokens()
+                .addAllTokens(list)
+                .build()
+        }
+    }
 }

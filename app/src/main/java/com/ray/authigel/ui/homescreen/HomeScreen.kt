@@ -4,26 +4,31 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ray.authigel.data.BackupPasswordKeystore
 import com.ray.authigel.data.CodeRecordVaultViewModel
-import com.ray.authigel.ui.theme.AuthIgelTheme
 import com.ray.authigel.ui.theme.HedgehogBrown
 import com.ray.authigel.util.CodeRecordExporter
 import com.ray.authigel.util.CodeRecordImporter
@@ -35,6 +40,9 @@ import com.ray.authigel.util.rememberQrCodeScanner
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableCollectionItemScope
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.time.Instant
@@ -116,6 +124,14 @@ fun HomeScreen() {
         if (uri != null) {
             selectedRestoreUri = uri
         }
+    }
+    val hapticFeedback = LocalHapticFeedback.current
+    val lazyListState = rememberLazyListState()
+    val reorderState = rememberReorderableLazyListState(
+        lazyListState
+    ) { from, to ->
+        vm.move(from.index, to.index)
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
     }
 
     LaunchedEffect(records) {
@@ -214,21 +230,53 @@ fun HomeScreen() {
             if (records.isEmpty()) {
                 EmptyState(Modifier.align(Alignment.Center))
             } else {
+//                LazyColumn(
+//                    modifier = Modifier.fillMaxSize(),
+//                    contentPadding = PaddingValues(16.dp),
+//                    verticalArrangement = Arrangement.spacedBy(12.dp)
+//                ) {
+//                    items(records, key = { it.id }) { record ->
+//                        val codeForRecord = codes[record.id] ?: "------"
+//                        CodeRecordCard(
+//                            record = record,
+//                            code = codeForRecord,
+//                            onDelete = {
+//                                vm.delete(record.id)
+//                                scope.launch { snackbarHostState.showSnackbar("${record.issuer} Record Removed") }
+//                            }
+//                        )
+//                    }
+//                }
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    state = lazyListState,
+                    modifier = Modifier
+                        .fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(records, key = { it.id }) { record ->
-                        val codeForRecord = codes[record.id] ?: "------"
-                        CodeRecordCard(
-                            record = record,
-                            code = codeForRecord,
-                            onDelete = {
-                                vm.delete(record.id)
-                                scope.launch { snackbarHostState.showSnackbar("${record.issuer} Record Removed") }
+                        ReorderableItem(reorderState, key = record.id) { isDragging ->
+                            val interactionSource = remember { MutableInteractionSource() }
+                            val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
+                            Surface(shadowElevation = elevation) {
+                                CodeRecordCard(
+                                    record = record,
+                                    code = codes[record.id] ?: "------",
+                                    onDelete = {
+                                        vm.delete(record.id)
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("${record.issuer} Record Removed")
+                                        }
+                                    },
+                                )
+                                { DragHandle(
+                                    scope = this,
+                                    interactionSource = interactionSource,
+                                    hapticFeedback = hapticFeedback
+                                ) }
                             }
-                        )
+
+                        }
                     }
                 }
             }
@@ -370,8 +418,9 @@ private fun CodeRecordCard(
     record: CodeRecord,
     code: String,
     onDelete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+    modifier: Modifier = Modifier,
+    dragHandle: @Composable () -> Unit
+){
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -384,7 +433,7 @@ private fun CodeRecordCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(end = 48.dp)
+                    .padding(end = 24.dp)
             ) {
                 Column {
                     Text(
@@ -403,24 +452,60 @@ private fun CodeRecordCard(
                     style = MaterialTheme.typography.headlineLarge
                 )
             }
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.align(Alignment.TopEnd)
+            Row(
+                modifier = Modifier.align(Alignment.TopEnd).offset(x = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                dragHandle()
+
+                IconButton(
+                    onClick = onDelete
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = "Delete")
+                }
             }
             Text(
                 text = "Added at: " +
                         DateTimeFormatter
                             .ofPattern("yyyy-MM-dd HH:mm")
                             .withZone(ZoneId.systemDefault())
-                            .format(Instant.ofEpochMilli(record.getAddedAt())),
+                            .format(Instant.ofEpochMilli(record.addedAt)),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Light,
                 color = Color.Gray,
                 modifier = Modifier.align(Alignment.BottomEnd)
             )
         }
+    }
+}
+
+@Composable
+fun DragHandle(
+    scope: ReorderableCollectionItemScope,
+    interactionSource: MutableInteractionSource,
+    hapticFeedback: androidx.compose.ui.hapticfeedback.HapticFeedback
+) {
+    IconButton(
+        modifier = with(scope) {
+            Modifier
+                .draggableHandle(
+                    interactionSource = interactionSource,
+                    onDragStarted = {
+                        hapticFeedback.performHapticFeedback(
+                            HapticFeedbackType.GestureThresholdActivate
+                        )
+                    },
+                    onDragStopped = {
+                        hapticFeedback.performHapticFeedback(
+                            HapticFeedbackType.GestureEnd
+                        )
+                    }
+                )
+                .clearAndSetSemantics { }
+        },
+        onClick = {}
+    ) {
+        Icon(Icons.Rounded.DragIndicator, contentDescription = "Reorder")
     }
 }
 
@@ -469,13 +554,7 @@ fun TotpCountdown(
     val progress = 1f - (elapsed.toFloat() / periodSec.toFloat())
 
     LinearProgressIndicator(
-        progress = { progress },
-        modifier = modifier,
-        color = HedgehogBrown,
-        trackColor = Color.LightGray
-    )
-}
-
+        progress = { progress },/*
 @Preview(showBackground = true)
 @Composable
 private fun HomePreview() {
@@ -491,4 +570,11 @@ private fun HomePreview() {
             previewCode, "123456", onDelete = {}
         ) }
     }
+}*/
+
+        modifier = modifier,
+        color = HedgehogBrown,
+        trackColor = Color.LightGray
+    )
 }
+

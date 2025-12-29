@@ -34,6 +34,10 @@ class CodeRecordVaultViewModel(app: Application) : AndroidViewModel(app) {
         repo.removeById(id)
     }
 
+    fun move(from: Int, to: Int) = viewModelScope.launch {
+        repo.move(from, to)
+    }
+
     fun storeEncryptedBackupPassword(password: ByteArray) = viewModelScope.launch {
         repo.storeEncryptedBackupPassword(password)
     }
