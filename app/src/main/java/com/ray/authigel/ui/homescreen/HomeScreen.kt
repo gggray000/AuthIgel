@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,9 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,14 +36,11 @@ import com.ray.authigel.util.rememberQrCodeScanner
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.io.FileNotFoundException
 import java.io.InputStream
-import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,7 +124,7 @@ fun HomeScreen() {
         lazyListState
     ) { from, to ->
         vm.move(from.index, to.index)
-        hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
     }
 
     LaunchedEffect(records) {
@@ -230,23 +223,6 @@ fun HomeScreen() {
             if (records.isEmpty()) {
                 EmptyState(Modifier.align(Alignment.Center))
             } else {
-//                LazyColumn(
-//                    modifier = Modifier.fillMaxSize(),
-//                    contentPadding = PaddingValues(16.dp),
-//                    verticalArrangement = Arrangement.spacedBy(12.dp)
-//                ) {
-//                    items(records, key = { it.id }) { record ->
-//                        val codeForRecord = codes[record.id] ?: "------"
-//                        CodeRecordCard(
-//                            record = record,
-//                            code = codeForRecord,
-//                            onDelete = {
-//                                vm.delete(record.id)
-//                                scope.launch { snackbarHostState.showSnackbar("${record.issuer} Record Removed") }
-//                            }
-//                        )
-//                    }
-//                }
                 LazyColumn(
                     state = lazyListState,
                     modifier = Modifier
@@ -255,28 +231,20 @@ fun HomeScreen() {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(records, key = { it.id }) { record ->
+
                         ReorderableItem(reorderState, key = record.id) { isDragging ->
                             val interactionSource = remember { MutableInteractionSource() }
-                            val elevation by animateDpAsState(if (isDragging) 4.dp else 0.dp)
-                            Surface(shadowElevation = elevation) {
-                                CodeRecordCard(
-                                    record = record,
-                                    code = codes[record.id] ?: "------",
-                                    onDelete = {
-                                        vm.delete(record.id)
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("${record.issuer} Record Removed")
-                                        }
-                                    },
-                                )
-                                { DragHandle(
-                                    scope = this,
-                                    interactionSource = interactionSource,
-                                    hapticFeedback = hapticFeedback
-                                ) }
-                            }
-
+                            ReorderableCodeRecordItem(
+                                record = record,
+                                code = codes[record.id] ?: "------",
+                                scope = this,
+                                interactionSource = interactionSource,
+                                isDragging = isDragging,
+                                hapticFeedback = hapticFeedback,
+                                onDelete = { vm.delete(record.id) }
+                            )
                         }
+
                     }
                 }
             }
@@ -413,107 +381,6 @@ private fun EmptyState(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-private fun CodeRecordCard(
-    record: CodeRecord,
-    code: String,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier,
-    dragHandle: @Composable () -> Unit
-){
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 24.dp)
-            ) {
-                Column {
-                    Text(
-                        record.issuer,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        record.holder,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    formatOtp(code),
-                    style = MaterialTheme.typography.headlineLarge
-                )
-            }
-            Row(
-                modifier = Modifier.align(Alignment.TopEnd).offset(x = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                dragHandle()
-
-                IconButton(
-                    onClick = onDelete
-                ) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete")
-                }
-            }
-            Text(
-                text = "Added at: " +
-                        DateTimeFormatter
-                            .ofPattern("yyyy-MM-dd HH:mm")
-                            .withZone(ZoneId.systemDefault())
-                            .format(Instant.ofEpochMilli(record.addedAt)),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Light,
-                color = Color.Gray,
-                modifier = Modifier.align(Alignment.BottomEnd)
-            )
-        }
-    }
-}
-
-@Composable
-fun DragHandle(
-    scope: ReorderableCollectionItemScope,
-    interactionSource: MutableInteractionSource,
-    hapticFeedback: androidx.compose.ui.hapticfeedback.HapticFeedback
-) {
-    IconButton(
-        modifier = with(scope) {
-            Modifier
-                .draggableHandle(
-                    interactionSource = interactionSource,
-                    onDragStarted = {
-                        hapticFeedback.performHapticFeedback(
-                            HapticFeedbackType.GestureThresholdActivate
-                        )
-                    },
-                    onDragStopped = {
-                        hapticFeedback.performHapticFeedback(
-                            HapticFeedbackType.GestureEnd
-                        )
-                    }
-                )
-                .clearAndSetSemantics { }
-        },
-        onClick = {}
-    ) {
-        Icon(Icons.Rounded.DragIndicator, contentDescription = "Reorder")
-    }
-}
-
-private fun formatOtp(code: String): String {
-    // visually group 6-digit codes like "123 456"
-    return if (code.length == 6) code.chunked(3).joinToString(" ") else code
-}
-
 private fun refreshCodes(records: List<CodeRecord>): Map<String, String> {
     return records.associate { record ->
         val code = OtpGenerator.generateTOTP(
@@ -554,7 +421,14 @@ fun TotpCountdown(
     val progress = 1f - (elapsed.toFloat() / periodSec.toFloat())
 
     LinearProgressIndicator(
-        progress = { progress },/*
+        progress = { progress },
+        modifier = modifier,
+        color = HedgehogBrown,
+        trackColor = Color.LightGray
+    )
+}
+
+/*
 @Preview(showBackground = true)
 @Composable
 private fun HomePreview() {
@@ -571,10 +445,4 @@ private fun HomePreview() {
         ) }
     }
 }*/
-
-        modifier = modifier,
-        color = HedgehogBrown,
-        trackColor = Color.LightGray
-    )
-}
 
