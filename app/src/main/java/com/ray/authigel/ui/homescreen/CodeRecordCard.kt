@@ -38,8 +38,7 @@ fun ReorderableCodeRecordItem(
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioHighBouncy,
             stiffness = Spring.StiffnessLow
-        ),
-        label = "cardElevation"
+        )
     )
 
     val scale by animateFloatAsState(
@@ -47,14 +46,12 @@ fun ReorderableCodeRecordItem(
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioHighBouncy,
             stiffness = Spring.StiffnessLow
-        ),
-        label = "cardScale"
+        )
     )
 
     val alpha by animateFloatAsState(
         targetValue = if (isDragging) 0.9f else 1f,
-        animationSpec = tween(120),
-        label = "cardAlpha"
+        animationSpec = tween(120)
     )
 
     val dragModifier = with(scope) {
@@ -87,7 +84,7 @@ fun ReorderableCodeRecordItem(
             record = record,
             code = code,
             onDelete = onDelete,
-            trailing = {
+            dragHandle = {
                 DragHandle(
                     scope = scope,
                     modifier = dragModifier
@@ -103,7 +100,7 @@ fun CodeRecordCard(
     code: String,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
-    trailing: @Composable () -> Unit = {}
+    dragHandle: @Composable () -> Unit = {}
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -140,7 +137,7 @@ fun CodeRecordCard(
                 modifier = Modifier.align(Alignment.TopEnd),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                trailing()
+                dragHandle()
 
                 IconButton(onClick = onDelete) {
                     Icon(

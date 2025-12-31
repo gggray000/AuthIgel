@@ -403,15 +403,10 @@ fun TotpCountdown(
     LaunchedEffect(Unit) {
         while (true) {
             nowMs = System.currentTimeMillis()
-
-            // Calculate which time cycle (period) we’re in
             val currentCycle = ((nowMs / 1000L).toInt()) / periodSec
-
-            // Detect when we’ve entered a new cycle
             if (lastCycle != -1 && currentCycle != lastCycle) {
                 onCycleComplete()
             }
-
             lastCycle = currentCycle
             delay(100)
         }
@@ -427,22 +422,3 @@ fun TotpCountdown(
         trackColor = Color.LightGray
     )
 }
-
-/*
-@Preview(showBackground = true)
-@Composable
-private fun HomePreview() {
-    AuthIgelTheme {
-        val previewCode = CodeRecord.newBuilder()
-        .setId(System.currentTimeMillis().toString())
-        .setIssuer("GitHub")
-        .setHolder("you@example.com")
-        .setSecret("JBSWY3DPEHPK3PXP")
-        .setRawUrl("otpauth://totp/…")
-        .build()
-        Surface { CodeRecordCard(
-            previewCode, "123456", onDelete = {}
-        ) }
-    }
-}*/
-
