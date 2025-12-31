@@ -3,6 +3,7 @@
 ![img.png](preview/img.png)
 
 ## Features
+- No internet connection is needed.
 - Import records from/Export records to plain text file.
 - Import records by scanning QR-Code.
 - Add records by manual input.
