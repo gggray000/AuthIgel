@@ -12,7 +12,7 @@ Yet another 2FA authenticator app.
 - Encrypted backup with user defined password (auto-backup possible).
 - Drag and drop to order the records.
 - Biometric lock for the app.
-- TODO: disable screenshot in the app.
+- Screenshot is disabled in the app.
 - ...
 
 ## Technical Stack
