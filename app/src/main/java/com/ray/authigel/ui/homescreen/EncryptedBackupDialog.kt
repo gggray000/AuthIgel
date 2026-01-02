@@ -3,16 +3,15 @@ package com.ray.authigel.ui.homescreen
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -45,6 +44,8 @@ fun EncryptedBackupDialog(
     var showPassword by remember { mutableStateOf(false) }
     var periodMenuExpanded by remember { mutableStateOf(false) }
     var isUpdatingPassword by remember { mutableStateOf(!hasExistingPassword) }
+    var showExistingPasswordDetected by remember { mutableStateOf(true) }
+    var showPasswordTip by remember { mutableStateOf(true) }
 
     val treePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -141,17 +142,31 @@ fun EncryptedBackupDialog(
                 }
 
 
-                if (enabled && hasExistingPassword && !isUpdatingPassword) {
+                if (enabled && hasExistingPassword && !isUpdatingPassword && showExistingPasswordDetected) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = "Notice: Existing password detected.",
-                            modifier = Modifier.padding(8.dp),
-                            fontWeight = FontWeight.Bold
-                        )
+                        Box {
+                            Text(
+                                text = "Existing password detected.",
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .padding(end = 24.dp),
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            IconButton(
+                                onClick = { showExistingPasswordDetected = false },
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close"
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -167,22 +182,44 @@ fun EncryptedBackupDialog(
                 }
 
                 if (enabled && isUpdatingPassword) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "IMPORTANT: Save this password safely. It is required to decrypt backups.",
-                            modifier = Modifier.padding(8.dp),
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onError
-                        )
+
+                    if(showPasswordTip) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box {
+                                Text(
+                                    text = "IMPORTANT: Save this password safely. It is required to decrypt backups.",
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .padding(end = 24.dp),
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onError
+                                )
+
+                                IconButton(
+                                    onClick = { showPasswordTip = false },
+                                    modifier = Modifier.align(Alignment.TopEnd)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close"
+                                    )
+                                }
+                            }
+                        }
                     }
+
+                    var passwordTouched by remember { mutableStateOf(false) }
+                    val isPasswordValid = password.length >= 6 && password.any{ it.isLetter() } && password.any{ it.isDigit() };
 
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { password = it },
+                        onValueChange = {
+                            password = it
+                            passwordTouched = true },
                         label = { Text("Password") },
                         singleLine = true,
                         visualTransformation =
@@ -200,8 +237,17 @@ fun EncryptedBackupDialog(
                                     contentDescription = null
                                 )
                             }
-                        }
+                        },
+                        isError = passwordTouched && !isPasswordValid
                     )
+
+                    if(passwordTouched && !isPasswordValid){
+                        Text(
+                            "Password must be at least 6 characters long, and a combination of letters and digits.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
 
                     OutlinedTextField(
                         value = confirmPassword,

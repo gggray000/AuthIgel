@@ -1,16 +1,15 @@
 package com.ray.authigel.ui.homescreen
 
 import android.net.Uri
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -34,6 +33,9 @@ fun RestoreBackupDialog(
 ) {
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var showExistingPasswordDetected by remember { mutableStateOf(true) }
+    var showExistingBackupDetected by remember { mutableStateOf(true) }
+
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -42,18 +44,31 @@ fun RestoreBackupDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
-                if (hasLastBackupUri) {
+                if (hasLastBackupUri && showExistingBackupDetected) {
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = "Existing backup location detected.",
-                            modifier = Modifier.padding(8.dp),
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        Box {
+                            Text(
+                                text = "Existing backup location detected.",
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .padding(end = 24.dp),
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            IconButton(
+                                onClick = { showExistingBackupDetected = false },
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close"
+                                )
+                            }
+                        }
                     }
                     Button(
                         onClick = onUseLastBackup,
@@ -78,18 +93,34 @@ fun RestoreBackupDialog(
                 }
 
                 if (hasExistingPassword) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Existing password detected.",
-                            modifier = Modifier.padding(8.dp),
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                    if(showExistingPasswordDetected){
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box {
+                                Text(
+                                    text = "Existing peassword detected.",
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .padding(end = 24.dp),
+                                    fontWeight = FontWeight.Bold
+                                )
+
+                                IconButton(
+                                    onClick = { showExistingPasswordDetected = false },
+                                    modifier = Modifier.align(Alignment.TopEnd)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Close"
+                                    )
+                                }
+                            }
+                        }
                     }
+
                     Button(
                         onClick = {
                             scope.launch {
