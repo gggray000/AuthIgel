@@ -137,7 +137,8 @@ fun CodeRecordCard(
                                 )
                             )
                         }
-                    }
+                    },
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         Icons.Filled.ContentCopy,
@@ -147,7 +148,10 @@ fun CodeRecordCard(
 
                 dragHandle()
 
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = "Delete"
@@ -177,7 +181,9 @@ fun DragHandle(
 ) {
     IconButton(
         modifier = with(scope) {
-            Modifier.draggableHandle(
+            Modifier
+                .size(36.dp)
+                .draggableHandle(
                 interactionSource = interactionSource,
                 onDragStarted = {
                     hapticFeedback.performHapticFeedback(

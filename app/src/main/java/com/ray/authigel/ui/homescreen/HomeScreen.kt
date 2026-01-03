@@ -126,6 +126,7 @@ fun HomeScreen() {
         vm.move(from.index, to.index)
         hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
     }
+    var recordPendingDeletion by remember {mutableStateOf<CodeRecord?>(null)}
 
     LaunchedEffect(records) {
         codes = refreshCodes(records)
@@ -241,7 +242,7 @@ fun HomeScreen() {
                                 interactionSource = interactionSource,
                                 isDragging = isDragging,
                                 hapticFeedback = hapticFeedback,
-                                onDelete = { vm.delete(record.id) }
+                                onDelete = { recordPendingDeletion = record }
                             )
                         }
 
@@ -249,6 +250,45 @@ fun HomeScreen() {
                 }
             }
         }
+    }
+    if (recordPendingDeletion != null) {
+        val issuer = recordPendingDeletion!!.issuer
+        AlertDialog(
+            onDismissRequest = {
+                recordPendingDeletion = null
+            },
+            title = {
+                Text("Confirmation")
+            },
+            text = {
+                Text(
+                    "Are you sure to delete record from $issuer?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+
+                        vm.delete(recordPendingDeletion!!.id)
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Record from $issuer has been deleted")
+                        }
+                        recordPendingDeletion = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        recordPendingDeletion = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
     if (showAddDialog) {
         AddRecordDialog(
