@@ -1,23 +1,29 @@
 package com.ray.authigel.ui.homescreen
 
+import android.content.ClipData
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ray.authigel.vault.CodeRecord
+import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import java.time.Instant
 import java.time.ZoneId
@@ -85,6 +91,8 @@ fun CodeRecordCard(
     modifier: Modifier = Modifier,
     dragHandle: @Composable () -> Unit = {}
 ) {
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     Card(
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -120,6 +128,23 @@ fun CodeRecordCard(
                 modifier = Modifier.align(Alignment.TopEnd),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            clipboard.setClipEntry(
+                                ClipEntry(
+                                    ClipData.newPlainText("OTP Code", code)
+                                )
+                            )
+                        }
+                    }
+                ) {
+                    Icon(
+                        Icons.Filled.ContentCopy,
+                        contentDescription = "Copy"
+                    )
+                }
+
                 dragHandle()
 
                 IconButton(onClick = onDelete) {
