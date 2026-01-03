@@ -54,30 +54,12 @@ fun ReorderableCodeRecordItem(
         animationSpec = tween(120)
     )
 
-    val dragModifier = with(scope) {
-        Modifier
-            .draggableHandle(
-                interactionSource = interactionSource,
-                onDragStarted = {
-                    hapticFeedback.performHapticFeedback(
-                        HapticFeedbackType.LongPress
-                    )
-                },
-                onDragStopped = {
-                    hapticFeedback.performHapticFeedback(
-                        HapticFeedbackType.GestureEnd
-                    )
-                }
-            )
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
-            }
-    }
-
     Surface(
-        modifier = dragModifier,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+        },
         shadowElevation = elevation
     ) {
         CodeRecordCard(
@@ -87,7 +69,8 @@ fun ReorderableCodeRecordItem(
             dragHandle = {
                 DragHandle(
                     scope = scope,
-                    modifier = dragModifier
+                    interactionSource = interactionSource,
+                    hapticFeedback = hapticFeedback,
                 )
             }
         )
@@ -164,11 +147,24 @@ fun CodeRecordCard(
 @Composable
 fun DragHandle(
     scope: ReorderableCollectionItemScope,
-    modifier: Modifier
+    interactionSource: MutableInteractionSource,
+    hapticFeedback: HapticFeedback
 ) {
     IconButton(
         modifier = with(scope) {
-            modifier
+            Modifier.draggableHandle(
+                interactionSource = interactionSource,
+                onDragStarted = {
+                    hapticFeedback.performHapticFeedback(
+                        HapticFeedbackType.LongPress
+                    )
+                },
+                onDragStopped = {
+                    hapticFeedback.performHapticFeedback(
+                        HapticFeedbackType.GestureEnd
+                    )
+                }
+            )
         },
         onClick = {}
     ) {
