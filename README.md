@@ -1,4 +1,4 @@
-## IgelAuth
+## AuthIgel
 Yet another 2FA authenticator app.
 <p align="center">
   <img src="preview/img.png" width="300" />
@@ -15,7 +15,7 @@ Yet another 2FA authenticator app.
 - Screenshot is disabled in the app.
 - ...
 
-## Technical Stack
+## Tech Stack
 - Language: Kotlin
 - UI: Jetpack Compose
 - Datastore: Protobuf
