@@ -52,10 +52,11 @@ fun RestoreBackupDialog(
                     ) {
                         Box {
                             Text(
-                                text = "Existing backup location detected.",
+                                text = "Existing backup detected.",
                                 modifier = Modifier
                                     .padding(8.dp)
-                                    .padding(end = 24.dp),
+                                    .padding(end = 24.dp)
+                                    .align(Alignment.Center),
                                 fontWeight = FontWeight.Bold
                             )
 
@@ -74,7 +75,7 @@ fun RestoreBackupDialog(
                         onClick = onUseLastBackup,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Use latest backup file")
+                        Text("Restore latest backup")
                     }
                 }
 
@@ -82,7 +83,7 @@ fun RestoreBackupDialog(
                     onClick = onChooseAnotherPosition,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Choose another backup file")
+                    Text("Choose another backup")
                 }
 
                 if (selectedUri != null) {
@@ -101,10 +102,11 @@ fun RestoreBackupDialog(
                         ) {
                             Box {
                                 Text(
-                                    text = "Existing peassword detected.",
+                                    text = "Existing password detected.",
                                     modifier = Modifier
                                         .padding(8.dp)
-                                        .padding(end = 24.dp),
+                                        .padding(end = 24.dp)
+                                        .align(Alignment.Center),
                                     fontWeight = FontWeight.Bold
                                 )
 

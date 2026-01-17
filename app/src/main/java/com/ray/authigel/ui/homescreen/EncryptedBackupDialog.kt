@@ -1,5 +1,7 @@
 package com.ray.authigel.ui.homescreen
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,42 +19,38 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.ray.authigel.util.encrypted_backup.EncryptedBackupFrequency
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EncryptedBackupDialog(
-    encryptedBackupFrequency: EncryptedBackupFrequency,
+    context: Context,
+    initiallyEnabled: Boolean,
     initialUri: Uri?,
     hasExistingPassword: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (options: EncryptedBackupFrequency, uri: Uri?, password: CharArray?) -> Unit
+    onConfirm: (enabled: Boolean, uri: Uri?, password: CharArray?) -> Unit
 ) {
-    var backupOptionsState by remember {
-        mutableStateOf(encryptedBackupFrequency)
-    }
-    val enabled = backupOptionsState != EncryptedBackupFrequency.Never
-    val frequencyLabel = when (backupOptionsState) {
-        EncryptedBackupFrequency.Never -> "Never"
-        EncryptedBackupFrequency.Once -> "Only once"
-        is EncryptedBackupFrequency.Periodic ->
-            "${(backupOptionsState as EncryptedBackupFrequency.Periodic).days} day(s)"
-    }
+    var enabled by remember { mutableStateOf(initiallyEnabled) }
     var selectedUri by remember { mutableStateOf(initialUri) }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
-    var periodMenuExpanded by remember { mutableStateOf(false) }
     var isUpdatingPassword by remember { mutableStateOf(!hasExistingPassword) }
     var showExistingPasswordDetected by remember { mutableStateOf(true) }
     var showPasswordTip by remember { mutableStateOf(true) }
 
     val treePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            selectedUri = uri
-        }
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data ?: return@rememberLauncherForActivityResult
+
+        context.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+
+        selectedUri = uri
     }
 
     AlertDialog(
@@ -69,62 +67,39 @@ fun EncryptedBackupDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-
-                    ExposedDropdownMenuBox(
-                        expanded = periodMenuExpanded,
-                        onExpandedChange = { periodMenuExpanded = !periodMenuExpanded }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedTextField(
-                            value = frequencyLabel,
-                            onValueChange = {},
-                            readOnly = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(
-                                    type = ExposedDropdownMenuAnchorType.PrimaryEditable,
-                                    enabled = true
-                                ),
-                            label = { Text("Backup frequency") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(periodMenuExpanded)
-                            }
+                        Text(
+                            text = "Enable encrypted backups",
+                            modifier = Modifier.weight(1f),
+                            fontWeight = FontWeight.SemiBold
                         )
-
-                        ExposedDropdownMenu(
-                            expanded = periodMenuExpanded,
-                            onDismissRequest = { periodMenuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Never") },
-                                onClick = {
-                                    backupOptionsState = EncryptedBackupFrequency.Never
-                                    periodMenuExpanded = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Only once") },
-                                onClick = {
-                                    backupOptionsState = EncryptedBackupFrequency.Once
-                                    periodMenuExpanded = false
-                                }
-                            )
-                            listOf(1, 3, 7, 30).forEach { days ->
-                                DropdownMenuItem(
-                                    text = { Text("$days day(s)") },
-                                    onClick = {
-                                        backupOptionsState = EncryptedBackupFrequency.Periodic(days)
-                                        periodMenuExpanded = false
-                                    }
-                                )
-                            }
-                        }
+                        Switch(
+                            checked = enabled,
+                            onCheckedChange = { enabled = it }
+                        )
                     }
+
+                    Text(
+                        text = "Encrypted backup will be automatically exported to the chosen location when the app starts. A maximum of 5 backup files will be retained.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 if(enabled) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Backup location", fontWeight = FontWeight.SemiBold)
+                        if(selectedUri != null) {
+                            Text("Current backup location", fontWeight = FontWeight.SemiBold)
+                        } else {
+                            Text("Backup location", fontWeight = FontWeight.SemiBold)
+                        }
 
                         Text(
                             text = selectedUri?.toString() ?: "No location chosen",
@@ -133,10 +108,23 @@ fun EncryptedBackupDialog(
                         )
 
                         Button(
-                            onClick = { treePickerLauncher.launch(null) },
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                                    addFlags(
+                                        Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                                                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                                    )
+                                }
+                                treePickerLauncher.launch(intent) },
                             enabled = enabled
                         ) {
-                            Text("Choose folder")
+                            if(selectedUri != null) {
+                                Text("Update backup location")
+                            } else {
+                                Text("Choose backup location")
+                            }
+
                         }
                     }
                 }
@@ -153,7 +141,8 @@ fun EncryptedBackupDialog(
                                 text = "Existing password detected.",
                                 modifier = Modifier
                                     .padding(8.dp)
-                                    .padding(end = 24.dp),
+                                    .padding(end = 24.dp)
+                                    .align(Alignment.Center),
                                 fontWeight = FontWeight.Bold
                             )
 
@@ -194,7 +183,8 @@ fun EncryptedBackupDialog(
                                     text = "IMPORTANT: Save this password safely. It is required to decrypt backups.",
                                     modifier = Modifier
                                         .padding(8.dp)
-                                        .padding(end = 24.dp),
+                                        .padding(end = 24.dp)
+                                        .align(Alignment.Center),
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onError
                                 )
@@ -272,20 +262,14 @@ fun EncryptedBackupDialog(
             }
         },
         confirmButton = {
-            val canConfirm = when (backupOptionsState) {
-                EncryptedBackupFrequency.Never -> true
-                EncryptedBackupFrequency.Once,
-                is EncryptedBackupFrequency.Periodic -> {
-                    selectedUri != null &&
-                            (!isUpdatingPassword || (password.isNotEmpty() && confirmPassword == password))
-                }
-            }
+            val canConfirm = !enabled ||
+                    (selectedUri != null && (!isUpdatingPassword || (password.isNotEmpty() && confirmPassword == password)))
 
             TextButton(
                 enabled = canConfirm,
                 onClick = {
                     onConfirm(
-                        backupOptionsState,
+                        enabled,
                         selectedUri,
                         if (enabled) password.toCharArray() else null
                     )

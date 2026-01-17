@@ -29,9 +29,8 @@ import com.ray.authigel.ui.theme.HedgehogBrown
 import com.ray.authigel.util.CodeRecordExporter
 import com.ray.authigel.util.CodeRecordImporter
 import com.ray.authigel.util.OtpGenerator
-import com.ray.authigel.util.encrypted_backup.AutoBackupScheduler
-import com.ray.authigel.util.encrypted_backup.EncryptedBackupFrequency
-import com.ray.authigel.util.encrypted_backup.EncryptedBackupPreferences
+import com.ray.authigel.util.encrypted_backup.AutoBackupManager
+import com.ray.authigel.util.encrypted_backup.AutoBackupPreferences
 import com.ray.authigel.util.rememberQrCodeScanner
 import com.ray.authigel.vault.CodeRecord
 import kotlinx.coroutines.delay
@@ -109,7 +108,7 @@ fun HomeScreen() {
         }
     )
     var showRestoreDialog by remember { mutableStateOf(false) }
-    val lastBackupFileUri = EncryptedBackupPreferences.loadLastBackupFileUri(context)
+    val lastBackupFileUri = AutoBackupPreferences.loadLastBackupFileUri(context)
     var selectedRestoreUri by remember { mutableStateOf<Uri?>(null) }
     val restoreFilePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -130,6 +129,10 @@ fun HomeScreen() {
 
     LaunchedEffect(records) {
         codes = refreshCodes(records)
+    }
+
+    LaunchedEffect(Unit){
+        AutoBackupManager.maybeRun(context)
     }
 
     Scaffold(
@@ -309,44 +312,35 @@ fun HomeScreen() {
         )
     }
     if (showEncryptedBackupDialog) {
-        val (backupFrequency, backupFolderUri) = EncryptedBackupPreferences.load(context)
+        val prefs = AutoBackupPreferences.load(context)
         EncryptedBackupDialog(
-            encryptedBackupFrequency = backupFrequency,
-            initialUri = backupFolderUri,
+            context = context,
+            initiallyEnabled = prefs.enabled,
+            initialUri = prefs.folderUri,
             hasExistingPassword = hasExistingPassword,
             onDismiss = { showEncryptedBackupDialog = false },
-            onConfirm = { newOptions, uri, password ->
+            onConfirm = { enabled, uri, password ->
                 showEncryptedBackupDialog = false
                 scope.launch {
-                    EncryptedBackupPreferences.save(context, newOptions, uri)
-                    if (backupFrequency != EncryptedBackupFrequency.Never && uri != null) {
-                        if (password != null && password.isNotEmpty()) {
-                            val passwordCopy = password.copyOf()
-                            val encrypted = BackupPasswordKeystore.encrypt(passwordCopy)
-                            vm.storeEncryptedBackupPassword(encrypted)
-                            password.fill('\u0000')
-                        }
-                        when (newOptions) {
-                            EncryptedBackupFrequency.Never -> {
-                                AutoBackupScheduler.cancelPeriodicBackup(context)
-                                snackbarHostState.showSnackbar("Encrypted backup disabled.")
-                            }
+                    AutoBackupPreferences.save(context, enabled, uri)
+                    if (enabled && password != null && password.isNotEmpty()) {
+                        val passwordCopy = password.copyOf()
+                        val encrypted =
+                            BackupPasswordKeystore.encrypt(passwordCopy)
 
-                            EncryptedBackupFrequency.Once -> {
-                                AutoBackupScheduler.cancelPeriodicBackup(context)
-                                AutoBackupScheduler.runImmediateBackup(context)
-                                snackbarHostState.showSnackbar("Backup saved.")
-                            }
+                        vm.storeEncryptedBackupPassword(encrypted)
 
-                            is EncryptedBackupFrequency.Periodic -> {
-                                AutoBackupScheduler.runImmediateBackup(context)
-                                AutoBackupScheduler.schedulePeriodicBackup(
-                                    context = context,
-                                    periodDays = newOptions.days
-                                )
-                                snackbarHostState.showSnackbar("Auto backup enabled (every ${newOptions.days} day(s)).")
-                            }
-                        }
+                        password.fill('\u0000')
+                    }
+
+                    if (enabled) {
+                        snackbarHostState.showSnackbar(
+                            "Encrypted backup enabled."
+                        )
+                    } else {
+                        snackbarHostState.showSnackbar(
+                            "Encrypted backup disabled."
+                        )
                     }
                 }
             }
