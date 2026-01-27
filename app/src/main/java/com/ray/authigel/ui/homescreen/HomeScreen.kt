@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ray.authigel.data.BackupPasswordKeystore
 import com.ray.authigel.data.CodeRecordVaultViewModel
 import com.ray.authigel.ui.theme.HedgehogBrown
+import com.ray.authigel.ui.theme.ThemeMode
 import com.ray.authigel.util.CodeRecordExporter
 import com.ray.authigel.util.CodeRecordImporter
 import com.ray.authigel.util.OtpGenerator
@@ -44,7 +46,10 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    themeMode: ThemeMode,
+    onSetThemeMode: (ThemeMode) -> Unit
+) {
     val vm: CodeRecordVaultViewModel = viewModel()
     val records by vm.records.collectAsState()
     var codes by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
@@ -72,6 +77,7 @@ fun HomeScreen() {
     }
     val hasExistingPassword by vm.hasPassword.collectAsState()
     var showEncryptedBackupDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     val importer = remember { CodeRecordImporter() }
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -161,10 +167,17 @@ fun HomeScreen() {
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Encrypted Backup settings") },
+                                text = { Text("Auto Backup settings") },
                                 onClick = {
                                     topMenuExpanded = false
                                     showEncryptedBackupDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Theme settings") },
+                                onClick = {
+                                    topMenuExpanded = false
+                                    showThemeDialog = true
                                 }
                             )
                         }
@@ -293,6 +306,16 @@ fun HomeScreen() {
             }
         )
     }
+    if (showThemeDialog) {
+        ThemeSettingsDialog(
+            current = themeMode,
+            onDismiss = { showThemeDialog = false },
+            onSelect = { selected ->
+                onSetThemeMode(selected)
+                showThemeDialog = false
+            }
+        )
+    }
     if (showAddDialog) {
         AddRecordDialog(
             onDismiss = { showAddDialog = false },
@@ -401,6 +424,25 @@ fun HomeScreen() {
             scope = scope
         )
     }
+}
+
+@Composable
+private fun ThemeModeItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        leadingIcon = {
+            if (selected) {
+                Icon(Icons.Outlined.Check, contentDescription = null)
+            } else {
+                Spacer(Modifier.size(24.dp))
+            }
+        },
+        onClick = onClick
+    )
 }
 
 @Composable

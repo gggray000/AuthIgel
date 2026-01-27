@@ -9,6 +9,8 @@ import com.ray.authigel.data.BackupPasswordKeystore
 import com.ray.authigel.data.VaultDI
 import com.ray.authigel.util.CodeRecordExporter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
@@ -18,7 +20,8 @@ import java.time.format.DateTimeFormatter
 
 object AutoBackupManager {
 
-    suspend fun maybeRun(context: Context) {
+    private val mutex = Mutex()
+    suspend fun maybeRun(context: Context) = mutex.withLock {
         val prefs = AutoBackupPreferences.load(context)
         if (!prefs.enabled) return
 
