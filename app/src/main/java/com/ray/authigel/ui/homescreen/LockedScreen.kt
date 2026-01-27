@@ -29,10 +29,6 @@ fun LockedScreen(
     val authenticator = remember(activity) { BiometricAuthenticator(activity) }
     var lastBackgroundTimestamp by rememberSaveable { mutableLongStateOf(0L) }
 
-    LaunchedEffect(Unit) {
-        isUnlocked = false
-    }
-
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         lastBackgroundTimestamp = System.currentTimeMillis()
     }

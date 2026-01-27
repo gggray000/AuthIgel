@@ -13,6 +13,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.fragment.app.FragmentActivity
 import com.ray.authigel.data.VaultDI
 import com.ray.authigel.ui.homescreen.HomeScreen
+import com.ray.authigel.ui.homescreen.LockedScreen
 import com.ray.authigel.ui.theme.AuthIgelTheme
 import com.ray.authigel.ui.theme.ThemeMode
 
@@ -27,11 +28,15 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         setContent {
             var themeMode by rememberSaveable { mutableStateOf(ThemeMode.SYSTEM) }
-
             AuthIgelTheme(themeMode = themeMode) {
+                LockedScreen(
+                    activity = this@MainActivity,
+                    {
                 HomeScreen(
                     themeMode = themeMode,
                     onSetThemeMode = { themeMode = it }
+                )},
+                    timeoutMinutes = 5L
                 )
             }
         }
