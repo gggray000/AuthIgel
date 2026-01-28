@@ -19,9 +19,9 @@ public fun ThemeSettingsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Theme") },
+        title = { Text("Theme Settings") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 ThemeRadioRow(
                     label = "Use system theme",
                     selected = current == ThemeMode.SYSTEM,
@@ -55,7 +55,7 @@ private fun ThemeRadioRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(
