@@ -2,7 +2,6 @@ package com.ray.authigel.util.encrypted_backup;
 
 import android.content.Context
 import android.net.Uri
-
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.ray.authigel.data.BackupPasswordKeystore
@@ -22,10 +21,16 @@ object AutoBackupManager {
 
     private val mutex = Mutex()
     suspend fun maybeRun(context: Context) {
-        Log.d("AutoBackup", "Waiting to acquire mutex")
+        Log.d(
+            "AutoBackup",
+            "Waiting to acquire mutex (thread=${Thread.currentThread().name})"
+        )
 
         mutex.withLock {
-            Log.d("AutoBackup", "Mutex acquired")
+            Log.d(
+                "AutoBackup",
+                "Mutex acquired on thread=${Thread.currentThread().name}"
+            )
 
             try {
                 val prefs = AutoBackupPreferences.load(context)
