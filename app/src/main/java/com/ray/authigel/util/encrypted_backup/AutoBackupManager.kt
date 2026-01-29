@@ -21,23 +21,33 @@ import java.time.format.DateTimeFormatter
 object AutoBackupManager {
 
     private val mutex = Mutex()
-    suspend fun maybeRun(context: Context) = mutex.withLock {
-        val prefs = AutoBackupPreferences.load(context)
-        if (!prefs.enabled) return
+    suspend fun maybeRun(context: Context) {
+        Log.d("AutoBackup", "Waiting to acquire mutex")
 
-        if (!shouldRunToday(context)) return
+        mutex.withLock {
+            Log.d("AutoBackup", "Mutex acquired")
 
-        val backupUri = runBackup(context)
-        if (backupUri != null) {
-            AutoBackupPreferences.saveLastBackupInstant(
-                context,
-                Instant.now()
-            )
-            AutoBackupPreferences.saveLastBackupFileUri(
-                context,
-                backupUri
-            )
-            AutoBackupRetention.cleanup(context, keep = 5)
+            try {
+                val prefs = AutoBackupPreferences.load(context)
+                if (!prefs.enabled) return
+
+                val ranToday = shouldRunToday(context)
+                var backupUri: Uri? = null
+
+                if (ranToday) {
+                    backupUri = runBackup(context)
+                    if (backupUri != null) {
+                        AutoBackupPreferences.saveLastBackupInstant(context, Instant.now())
+                        AutoBackupPreferences.saveLastBackupFileUri(context, backupUri)
+                    }
+                } else {
+                    Log.d("AutoBackup", "Backup already ran today → skipping backup")
+                }
+
+                AutoBackupRetention.cleanup(context, keep = 5)
+            } finally {
+                Log.d("AutoBackup", "Mutex released")
+            }
         }
     }
 
@@ -47,7 +57,7 @@ object AutoBackupManager {
         val lastDate = last
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
-
+        Log.d("AutoBackup", "Last backup date: $lastDate ,Latest date: ${LocalDate.now()}")
         return lastDate.isBefore(LocalDate.now())
     }
 
