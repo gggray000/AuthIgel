@@ -28,10 +28,13 @@ object AutoBackupRetention {
             .sortedByDescending { it.second }
             .drop(keep)
             .forEach { (file, _) ->
+                val name = file.name ?: "<unknown>"
+                val uri = file.uri
                 val deleted = file.delete()
+
                 Log.d(
                     "AutoBackupRetention",
-                    "delete ${file.name} → $deleted"
+                    "delete name=$name uri=$uri → $deleted"
                 )
             }
     }
